@@ -95,7 +95,7 @@ function MemberBar({member,value,max,textColor="#2C2C2C",valueColor="#1A1A1A",tr
 }
 
 // ─── GROUP CARD ──────────────────────────────────────────────────────────────
-function GroupCard({group,members,onUpdate,onDelete}){
+function GroupCard({group,members,onUpdate,onDelete,isDark=false}){
   const [expanded,setExpanded]=useState(false);
   const [editing,setEditing]=useState(false);
   const [draft,setDraft]=useState(null);
@@ -108,76 +108,86 @@ function GroupCard({group,members,onUpdate,onDelete}){
   function cancelEdit(){ setEditing(false); setDraft(null); }
   function splitEqual(d){ const per=d.total/members.length; return {...d,shares:Object.fromEntries(members.map(m=>[m.id,per]))}; }
 
+  const card   = isDark?"#1F1F1F":"#FFF";
+  const cardBdr= isDark?"1px solid #3A3A3A":"1px solid #E8E4DE";
+  const expBg  = isDark?"#252525":"#FAFAFA";
+  const rowBg  = isDark?"#2A2A2A":"#F9F6F1";
+  const rowBdr = isDark?"1px solid #3A3A3A":"1px solid #EDE8E0";
+  const txt    = isDark?"#EAEAEA":"#1A1A1A";
+  const muted  = isDark?"#BEBEBE":"#666";
+  const inpBdr = isDark?"1px solid #444":"1px solid #BBB";
+  const inpBg  = isDark?"#1A1A1A":"#FFF";
+
   return(
-    <div style={{background:"#FFF",border:"1px solid #E8E4DE",borderRadius:8,marginBottom:6,overflow:"hidden"}}>
+    <div style={{background:card,border:cardBdr,borderRadius:8,marginBottom:6,overflow:"hidden"}}>
       <div onClick={()=>!editing&&setExpanded(e=>!e)} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",cursor:"pointer",userSelect:"none"}}>
         <span style={{fontSize:18}}>{group.emoji}</span>
         <div style={{flex:1}}>
-          <div style={{fontSize:13,fontWeight:700,color:"#1A1A1A"}}>{group.label}</div>
-          <div style={{fontSize:11,color:"#666",marginTop:1}}>
+          <div style={{fontSize:13,fontWeight:700,color:txt}}>{group.label}</div>
+          <div style={{fontSize:11,color:muted,marginTop:1}}>
             Paid by <span style={{color:payer?.color,fontWeight:600}}>{payer?.name}</span>
-            {group.note&&<span style={{color:"#999"}}> · {group.note}</span>}
+            {group.note&&<span style={{color:isDark?"#888":"#999"}}> · {group.note}</span>}
           </div>
         </div>
         <div style={{textAlign:"right"}}>
-          <div style={{fontSize:14,fontWeight:800,color:"#1A1A1A"}}>{fmt(group.total)}</div>
+          <div style={{fontSize:14,fontWeight:800,color:txt}}>{fmt(group.total)}</div>
           {diff>0.5&&<div style={{fontSize:10,color:"#E07020",fontWeight:600}}>⚠ Δ {fmt(diff)}</div>}
         </div>
         <span style={{fontSize:14,color:"#888",marginLeft:4,transition:"transform 0.2s",transform:expanded?"rotate(180deg)":"rotate(0deg)"}}>▾</span>
       </div>
 
       {expanded&&!editing&&(
-        <div style={{borderTop:"1px solid #E8E4DE",padding:"10px 14px 12px",background:"#FAFAFA"}}>
-          <div style={{marginBottom:10}}>
-            {members.map(m=>(
-              <div key={m.id} style={{display:"flex",alignItems:"center",gap:10,marginBottom:6,padding:"6px 10px",borderRadius:7,background:(group.shares[m.id]||0)>0?m.color+"0D":"#F9F6F1",border:`1px solid ${(group.shares[m.id]||0)>0?m.color+"25":"#EDE8E0"}`}}>
+        <div style={{borderTop:cardBdr,padding:"10px 14px 12px",background:expBg}}>
+          <div style={{marginBottom:10,borderRadius:7,overflow:"hidden",border:rowBdr}}>
+            {members.map((m,idx)=>(
+              <div key={m.id} style={{display:"flex",alignItems:"center",gap:10,padding:"7px 10px",background:idx%2===0?(isDark?"#222222":"#F8F7F6"):(isDark?"#2A2A2A":"#FFFFFF"),borderBottom:idx<members.length-1?(isDark?"1px solid #303030":"1px solid #EFEFED"):"none"}}>
                 <Avatar member={m} size={22}/>
-                <span style={{flex:1,fontSize:12,fontWeight:600,color:"#333"}}>{m.name}</span>
-                <span style={{fontSize:13,fontWeight:700,color:(group.shares[m.id]||0)>0?m.color:"#AAA"}}>
+                <span style={{flex:1,fontSize:12,fontWeight:600,color:txt}}>{m.name}</span>
+                <span style={{fontSize:13,fontWeight:700,color:(group.shares[m.id]||0)>0?txt:isDark?"#555":"#BBB"}}>
                   {(group.shares[m.id]||0)>0?fmt(group.shares[m.id]):"—"}
                 </span>
               </div>
             ))}
           </div>
           <div style={{display:"flex",gap:8}}>
-            <button onClick={startEdit} style={{flex:1,padding:"6px 12px",borderRadius:6,border:"1px solid #BBB",background:"#FFF",fontSize:12,fontWeight:600,color:"#444",cursor:"pointer"}}>Edit</button>
+            <button onClick={startEdit} style={{flex:1,padding:"6px 12px",borderRadius:6,border:inpBdr,background:inpBg,fontSize:12,fontWeight:600,color:isDark?"#EAEAEA":"#444",cursor:"pointer"}}>Edit</button>
             <button onClick={()=>onDelete(group.id)} style={{padding:"6px 12px",borderRadius:6,border:"1px solid #FCC",background:"#FFF8F8",fontSize:12,fontWeight:600,color:"#C44",cursor:"pointer"}}>Delete</button>
           </div>
         </div>
       )}
 
       {expanded&&editing&&draft&&(
-        <div style={{borderTop:"1px solid #E8E4DE",padding:"12px 14px 14px",background:"#FAFAFA"}}>
+        <div style={{borderTop:cardBdr,padding:"12px 14px 14px",background:expBg}}>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}}>
             <div>
-              <label style={{fontSize:10,color:"#666",fontWeight:600,display:"block",marginBottom:3}}>LABEL</label>
-              <input value={draft.label} onChange={e=>setDraft({...draft,label:e.target.value})} style={{width:"100%",padding:"6px 8px",borderRadius:6,border:"1px solid #BBB",fontSize:12,boxSizing:"border-box"}}/>
+              <label style={{fontSize:10,color:muted,fontWeight:600,display:"block",marginBottom:3}}>LABEL</label>
+              <input value={draft.label} onChange={e=>setDraft({...draft,label:e.target.value})} style={{width:"100%",padding:"6px 8px",borderRadius:6,border:inpBdr,fontSize:12,boxSizing:"border-box",background:inpBg,color:txt}}/>
             </div>
             <div>
-              <label style={{fontSize:10,color:"#666",fontWeight:600,display:"block",marginBottom:3}}>TOTAL (₹)</label>
-              <input type="number" value={draft.total} onChange={e=>setDraft({...draft,total:parseFloat(e.target.value)||0})} style={{width:"100%",padding:"6px 8px",borderRadius:6,border:"1px solid #BBB",fontSize:12,boxSizing:"border-box"}}/>
+              <label style={{fontSize:10,color:muted,fontWeight:600,display:"block",marginBottom:3}}>TOTAL (₹)</label>
+              <input type="number" value={draft.total} onChange={e=>setDraft({...draft,total:parseFloat(e.target.value)||0})} style={{width:"100%",padding:"6px 8px",borderRadius:6,border:inpBdr,fontSize:12,boxSizing:"border-box",background:inpBg,color:txt}}/>
             </div>
             <div>
-              <label style={{fontSize:10,color:"#666",fontWeight:600,display:"block",marginBottom:3}}>PAID BY</label>
-              <select value={draft.paidBy} onChange={e=>setDraft({...draft,paidBy:e.target.value})} style={{width:"100%",padding:"6px 8px",borderRadius:6,border:"1px solid #BBB",fontSize:12,boxSizing:"border-box"}}>
+              <label style={{fontSize:10,color:muted,fontWeight:600,display:"block",marginBottom:3}}>PAID BY</label>
+              <select value={draft.paidBy} onChange={e=>setDraft({...draft,paidBy:e.target.value})} style={{width:"100%",padding:"6px 8px",borderRadius:6,border:inpBdr,fontSize:12,boxSizing:"border-box",background:inpBg,color:txt}}>
                 {members.map(m=><option key={m.id} value={m.id}>{m.name}</option>)}
               </select>
             </div>
             <div>
-              <label style={{fontSize:10,color:"#666",fontWeight:600,display:"block",marginBottom:3}}>NOTE</label>
-              <input value={draft.note} onChange={e=>setDraft({...draft,note:e.target.value})} style={{width:"100%",padding:"6px 8px",borderRadius:6,border:"1px solid #BBB",fontSize:12,boxSizing:"border-box"}}/>
+              <label style={{fontSize:10,color:muted,fontWeight:600,display:"block",marginBottom:3}}>NOTE</label>
+              <input value={draft.note} onChange={e=>setDraft({...draft,note:e.target.value})} style={{width:"100%",padding:"6px 8px",borderRadius:6,border:inpBdr,fontSize:12,boxSizing:"border-box",background:inpBg,color:txt}}/>
             </div>
           </div>
           <div style={{marginBottom:8}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
-              <label style={{fontSize:10,color:"#666",fontWeight:600}}>SHARES (₹)</label>
-              <button onClick={()=>setDraft(splitEqual(draft))} style={{fontSize:10,padding:"3px 8px",borderRadius:5,border:"1px solid #BBB",background:"#FFF",cursor:"pointer",color:"#444",fontWeight:600}}>Split equally</button>
+              <label style={{fontSize:10,color:muted,fontWeight:600}}>SHARES (₹)</label>
+              <button onClick={()=>setDraft(splitEqual(draft))} style={{fontSize:10,padding:"3px 8px",borderRadius:5,border:inpBdr,background:inpBg,cursor:"pointer",color:isDark?"#EAEAEA":"#444",fontWeight:600}}>Split equally</button>
             </div>
             {members.map(m=>(
-              <div key={m.id} style={{display:"flex",alignItems:"center",gap:10,marginBottom:6,padding:"6px 10px",borderRadius:7,background:"#F9F6F1",border:"1px solid #EDE8E0"}}>
+              <div key={m.id} style={{display:"flex",alignItems:"center",gap:10,marginBottom:6,padding:"6px 10px",borderRadius:7,background:rowBg,border:rowBdr}}>
                 <Avatar member={m} size={22}/>
-                <span style={{fontSize:12,fontWeight:600,color:"#333",flex:1}}>{m.name}</span>
-                <input type="number" value={draft.shares[m.id]??0} onChange={e=>setDraft({...draft,shares:{...draft.shares,[m.id]:parseFloat(e.target.value)||0}})} style={{width:90,padding:"4px 8px",borderRadius:5,border:"1px solid #BBB",fontSize:12,textAlign:"right"}}/>
+                <span style={{fontSize:12,fontWeight:600,color:txt,flex:1}}>{m.name}</span>
+                <input type="number" value={draft.shares[m.id]??0} onChange={e=>setDraft({...draft,shares:{...draft.shares,[m.id]:parseFloat(e.target.value)||0}})} style={{width:90,padding:"4px 8px",borderRadius:5,border:inpBdr,fontSize:12,textAlign:"right",background:inpBg,color:txt}}/>
               </div>
             ))}
             {Math.abs(draft.total-Object.values(draft.shares).reduce((a,b)=>a+b,0))>0.5&&(
@@ -186,7 +196,7 @@ function GroupCard({group,members,onUpdate,onDelete}){
           </div>
           <div style={{display:"flex",gap:8}}>
             <button onClick={saveEdit} style={{flex:1,padding:"7px 12px",borderRadius:6,border:"none",background:"#2C2C2C",color:"#FFF",fontSize:12,fontWeight:700,cursor:"pointer"}}>Save changes</button>
-            <button onClick={cancelEdit} style={{padding:"7px 12px",borderRadius:6,border:"1px solid #BBB",background:"#FFF",fontSize:12,fontWeight:600,color:"#666",cursor:"pointer"}}>Cancel</button>
+            <button onClick={cancelEdit} style={{padding:"7px 12px",borderRadius:6,border:inpBdr,background:inpBg,fontSize:12,fontWeight:600,color:muted,cursor:"pointer"}}>Cancel</button>
           </div>
         </div>
       )}
@@ -467,6 +477,7 @@ function TripSettingsModal({tripName,members,onSave,onClose}){
   const [name,setName]=useState(tripName);
   const [people,setPeople]=useState(members.map(m=>({...m})));
   const [newName,setNewName]=useState("");
+  const [pendingRemove,setPendingRemove]=useState(null);
 
   function addPerson(){
     if(!newName.trim()) return;
@@ -483,7 +494,21 @@ function TripSettingsModal({tripName,members,onSave,onClose}){
 
   return(
     <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.45)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
-      <div style={{background:"#FFF",borderRadius:14,padding:24,width:400,maxHeight:"85vh",overflowY:"auto",boxShadow:"0 20px 60px rgba(0,0,0,0.2)"}}>
+      <div style={{background:"#FFF",borderRadius:14,padding:24,width:400,maxHeight:"85vh",overflowY:"auto",boxShadow:"0 20px 60px rgba(0,0,0,0.2)",position:"relative"}}>
+        {pendingRemove&&(
+          <div style={{position:"absolute",inset:0,background:"rgba(0,0,0,0.32)",borderRadius:14,display:"flex",alignItems:"center",justifyContent:"center",zIndex:10}}>
+            <div style={{background:"#FFF",borderRadius:10,padding:"20px 22px",width:260,boxShadow:"0 8px 28px rgba(0,0,0,0.18)"}}>
+              <div style={{fontSize:13,fontWeight:800,color:"#1A1A1A",marginBottom:6}}>Remove person?</div>
+              <div style={{fontSize:12,color:"#666",lineHeight:1.6,marginBottom:16}}>
+                All expense data attributed to <strong style={{color:"#1A1A1A"}}>{people.find(p=>p.id===pendingRemove)?.name||"this person"}</strong> will be lost.
+              </div>
+              <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
+                <button onClick={()=>setPendingRemove(null)} style={{padding:"6px 14px",borderRadius:7,border:"1px solid #CCC",background:"#FFF",fontSize:12,fontWeight:600,color:"#444",cursor:"pointer"}}>Cancel</button>
+                <button onClick={()=>{removePerson(pendingRemove);setPendingRemove(null);}} style={{padding:"6px 14px",borderRadius:7,border:"none",background:"#C44",color:"#FFF",fontSize:12,fontWeight:700,cursor:"pointer"}}>Remove</button>
+              </div>
+            </div>
+          </div>
+        )}
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
           <h3 style={{margin:0,fontSize:15,fontWeight:800,fontFamily:"'Nunito',sans-serif"}}>Trip Settings</h3>
           <button onClick={onClose} style={{border:"none",background:"none",fontSize:18,cursor:"pointer",color:"#777"}}>✕</button>
@@ -510,7 +535,7 @@ function TripSettingsModal({tripName,members,onSave,onClose}){
                 style={{flex:1,border:"none",background:"transparent",fontSize:13,fontWeight:600,color:"#222",outline:"none",padding:0}}
               />
               {people.length>2&&(
-                <button onClick={()=>removePerson(m.id)} style={{border:"none",background:"#FEE",borderRadius:"50%",width:22,height:22,cursor:"pointer",color:"#C44",fontSize:14,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,padding:0}}>×</button>
+                <button onClick={()=>setPendingRemove(m.id)} style={{border:"none",background:"#FEE",borderRadius:"50%",width:22,height:22,cursor:"pointer",color:"#C44",fontSize:14,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,padding:0}}>×</button>
               )}
             </div>
           ))}
@@ -646,16 +671,20 @@ export default function TripSplitter(){
   const [members,setMembers]           = useState(cloneData(DATASET_1_MEMBERS));
   const [groups,setGroups]             = useState(cloneData(DATASET_1_GROUPS));
   const [existingDebts,setExistingDebts] = useState(cloneData(DATASET_1_EXISTING_DEBTS));
-  const [settleMode,setSettleMode]     = useState("live");
   const [showAdd,setShowAdd]           = useState(false);
   const [showSettings,setShowSettings] = useState(false);
   const [showExistingDebts,setShowExistingDebts] = useState(false);
   const [themeMode,setThemeMode]       = useState("light");
   const [showReset,setShowReset]       = useState(false);
+  const [history,setHistory]           = useState([{tripName:DATASET_1_TRIP_NAME,members:cloneData(DATASET_1_MEMBERS),groups:cloneData(DATASET_1_GROUPS),existingDebts:cloneData(DATASET_1_EXISTING_DEBTS)}]);
+  const [historyIdx,setHistoryIdx]     = useState(0);
 
   const balances   = computeBalances(members,groups,existingDebts);
   const grandTotal = groups.reduce((s,g)=>s+g.total,0);
-  const maxSpend   = Math.max(...members.map(m=>balances.owed[m.id]),1);
+  const totalSettlement = balances.transactions.reduce((s,t)=>s+t.amount,0);
+  const hasPeople  = members.some(m=>(m.name||"").trim().length>0);
+  const visibleMembers = hasPeople ? members.filter(m=>(m.name||"").trim().length>0) : [];
+  const maxSpend   = Math.max(...(visibleMembers.length?visibleMembers.map(m=>balances.owed[m.id]):[1]),1);
   const isDark     = themeMode==="dark";
   const hasAnyData = groups.length>0 || existingDebts.length>0;
 
@@ -671,28 +700,58 @@ export default function TripSplitter(){
         topText:"#F4F7FB", topMuted:"#AFC3D8", topChipBg:"#1A3148", topChipBorder:"#355574"
       };
 
-  function updateGroup(u){ setGroups(gs=>gs.map(g=>g.id===u.id?u:g)); }
-  function deleteGroup(id){ setGroups(gs=>gs.filter(g=>g.id!==id)); }
-  function addGroup(g){ setGroups(gs=>[...gs,g]); }
+  function pushHistory(snap){
+    const next = [...history.slice(0, historyIdx+1), snap].slice(-50);
+    setHistory(next);
+    setHistoryIdx(next.length-1);
+  }
+  function undo(){
+    if(historyIdx<=0) return;
+    const snap=history[historyIdx-1];
+    setHistoryIdx(historyIdx-1);
+    setTripName(snap.tripName); setMembers(snap.members); setGroups(snap.groups); setExistingDebts(snap.existingDebts);
+  }
+  function redo(){
+    if(historyIdx>=history.length-1) return;
+    const snap=history[historyIdx+1];
+    setHistoryIdx(historyIdx+1);
+    setTripName(snap.tripName); setMembers(snap.members); setGroups(snap.groups); setExistingDebts(snap.existingDebts);
+  }
+
+  function updateGroup(u){
+    const g2=groups.map(g=>g.id===u.id?u:g);
+    setGroups(g2); pushHistory({tripName,members,groups:g2,existingDebts});
+  }
+  function deleteGroup(id){
+    const g2=groups.filter(g=>g.id!==id);
+    setGroups(g2); pushHistory({tripName,members,groups:g2,existingDebts});
+  }
+  function addGroup(g){
+    const g2=[...groups,g];
+    setGroups(g2); pushHistory({tripName,members,groups:g2,existingDebts});
+  }
   function loadDataset1(){
-    setTripName(DATASET_1_TRIP_NAME);
-    setMembers(cloneData(DATASET_1_MEMBERS));
-    setGroups(cloneData(DATASET_1_GROUPS));
-    setExistingDebts(cloneData(DATASET_1_EXISTING_DEBTS));
+    const snap={tripName:DATASET_1_TRIP_NAME,members:cloneData(DATASET_1_MEMBERS),groups:cloneData(DATASET_1_GROUPS),existingDebts:cloneData(DATASET_1_EXISTING_DEBTS)};
+    setTripName(snap.tripName); setMembers(snap.members); setGroups(snap.groups); setExistingDebts(snap.existingDebts);
+    pushHistory(snap);
   }
   function resetAllData(){
-    setTripName("New Trip");
-    setMembers(DATASET_1_MEMBERS.map(m=>({...m,name:"",initials:"--"})));
-    setGroups([]);
-    setExistingDebts([]);
-    setShowReset(false);
+    const emptyMembers=DATASET_1_MEMBERS.map(m=>({...m,name:"",initials:"--"}));
+    const snap={tripName:"New Trip",members:emptyMembers,groups:[],existingDebts:[]};
+    setTripName(snap.tripName); setMembers(snap.members); setGroups(snap.groups); setExistingDebts(snap.existingDebts);
+    setHistory([snap]); setHistoryIdx(0); setShowReset(false);
   }
   function saveSettings(name,people){
-    setTripName(name);
-    setMembers(people);
-    const validIds = new Set(people.map(p=>p.id));
-    setExistingDebts(ds=>ds.filter(d=>validIds.has(d.from) && validIds.has(d.to) && d.from!==d.to && d.amount>0));
+    setTripName(name); setMembers(people);
+    const validIds=new Set(people.map(p=>p.id));
+    const newDebts=existingDebts.filter(d=>validIds.has(d.from)&&validIds.has(d.to)&&d.from!==d.to&&d.amount>0);
+    setExistingDebts(newDebts);
+    pushHistory({tripName:name,members:people,groups,existingDebts:newDebts});
     setShowSettings(false);
+  }
+  function handleSaveDebts(newDebts){
+    setExistingDebts(newDebts);
+    pushHistory({tripName,members,groups,existingDebts:newDebts});
   }
 
   function handlePrint(){
@@ -760,7 +819,7 @@ export default function TripSplitter(){
 
       {/* ── TOP BAR ──────────────────────────────────────────────────────────── */}
       {/* Header */}
-      <div style={{background:theme.topBg,borderBottom:`1px solid ${theme.topChipBorder}`,boxShadow:"0 10px 28px rgba(0,0,0,0.21)",padding:"0 20px",height:62,display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,zIndex:200}}>
+      <div style={{background:theme.topBg,borderBottom:isDark?"none":`1px solid #DCD6CC`,boxShadow:isDark?"none":"0 8px 18px rgba(0,0,0,0.12)",padding:"0 20px",height:62,display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,zIndex:200}}>
         <div style={{display:"flex",alignItems:"center",gap:14,minWidth:0}}>
           <div style={{display:"flex",alignItems:"center",gap:9,paddingRight:8,borderRight:`1px solid ${theme.topChipBorder}`}}>
             <div style={{width:24,height:24,borderRadius:8,background:"radial-gradient(circle at 30% 30%, #8ED1FF 0%, #3B82F6 58%, #173964 100%)",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"inset 0 0 0 1px rgba(255,255,255,0.24)"}}>
@@ -785,6 +844,10 @@ export default function TripSplitter(){
         </div>
 
         <div style={{display:"flex",alignItems:"center",gap:10}}>
+          <div style={{display:"flex",gap:3}}>
+            <button onClick={undo} disabled={historyIdx<=0} title="Undo" style={{padding:"5px 9px",borderRadius:7,border:`1px solid ${theme.topChipBorder}`,background:theme.topChipBg,color:historyIdx<=0?theme.topMuted:theme.topText,fontSize:13,cursor:historyIdx<=0?"not-allowed":"pointer",opacity:historyIdx<=0?0.4:1}}>↩</button>
+            <button onClick={redo} disabled={historyIdx>=history.length-1} title="Redo" style={{padding:"5px 9px",borderRadius:7,border:`1px solid ${theme.topChipBorder}`,background:theme.topChipBg,color:historyIdx>=history.length-1?theme.topMuted:theme.topText,fontSize:13,cursor:historyIdx>=history.length-1?"not-allowed":"pointer",opacity:historyIdx>=history.length-1?0.4:1}}>↪</button>
+          </div>
           <button onClick={()=>setThemeMode(m=>m==="light"?"dark":"light")} style={{display:"flex",alignItems:"center",gap:8,padding:"4px 10px",borderRadius:999,border:`1px solid ${theme.topChipBorder}`,background:theme.topChipBg,color:theme.topText,fontSize:11,fontWeight:700,cursor:"pointer"}}>
             <span style={{fontSize:10,color:theme.topMuted}}>{isDark?"Dark":"Light"}</span>
             <span style={{width:34,height:18,borderRadius:999,background:isDark?"#4B3626":"#D6D0C6",position:"relative",display:"inline-block"}}>
@@ -801,38 +864,51 @@ export default function TripSplitter(){
         </div>
       
       {/* ── THREE COLUMNS ──────────────────────────────────────────────────────── */}
-      <div style={{display:"flex",height:"calc(100vh - 66px)",overflow:"hidden",paddingTop:4}}>
+      <div style={{display:"flex",height:"calc(100vh - 66px)",overflow:"hidden",paddingTop:0}}>
 
                 {/* COL 1: Groups - 50% */}
-        <div style={{width:"50%",borderRight:`1px solid ${theme.border}`,display:"flex",flexDirection:"column",background:theme.panelBg}}>
+        <div style={{position:"relative",zIndex:3,width:"50%",marginRight:-8,display:"flex",flexDirection:"column",background:theme.panelBg,boxShadow:isDark?"4px 0 12px rgba(0,0,0,0.3)":"4px 0 12px rgba(0,0,0,0.10)"}}>
           <div style={{padding:"14px 16px 10px",borderBottom:`1px solid ${theme.border}`,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
             <div>
-              <div style={{fontFamily:"'Nunito',sans-serif",fontSize:14,fontWeight:800,color:theme.text}}>Expense Groups</div>
-              <div style={{fontSize:11,color:theme.muted,marginTop:1}}>{groups.length} groups - click to expand and edit inline</div>
+              <div style={{fontFamily:"'Nunito',sans-serif",fontSize:14,fontWeight:800,color:theme.text,display:"flex",alignItems:"center",gap:8}}>
+                <span style={{display:"inline-flex",alignItems:"center",justifyContent:"center",width:20,height:20,borderRadius:4,background:isDark?"#2C2C2C":"#EDEDEB",border:isDark?"1px solid #3A3A3A":"1px solid #D8D4CE",fontSize:11,fontWeight:800,color:isDark?"#888":"#777",flexShrink:0}}>∑</span>
+                Expense Groups
+              </div>
+              <div style={{fontSize:11,color:theme.muted,marginTop:1}}>{groups.length} groups · click to expand</div>
             </div>
             <div style={{display:"flex",gap:8}}>
               <button onClick={()=>setShowExistingDebts(true)} style={{padding:"5px 12px",borderRadius:7,border:`1px solid ${theme.border}`,background:theme.panelBg,color:theme.text,fontSize:12,fontWeight:600,cursor:"pointer"}}>
                 Existing Debts
               </button>
-              <button onClick={()=>setShowAdd(true)} style={{padding:"5px 12px",borderRadius:7,border:`1px solid ${theme.border}`,background:theme.panelBg,color:theme.text,fontSize:12,fontWeight:600,cursor:"pointer"}}>
-                + Add group
+              <button onClick={()=>hasPeople?setShowAdd(true):setShowSettings(true)} style={{padding:"5px 12px",borderRadius:7,border:`1px solid ${theme.border}`,background:theme.panelBg,color:theme.text,fontSize:12,fontWeight:600,cursor:"pointer"}}>
+                {hasPeople?"+ Add group":"+ Add People"}
               </button>
             </div>
           </div>
           <div style={{flex:1,overflowY:"auto",padding:"10px 12px"}}>
             {groups.length===0&&(
-              <div style={{background:theme.panelBg,border:`1px dashed ${theme.border}`,borderRadius:8,padding:"12px 14px",marginBottom:8}}>
-                <div style={{fontSize:12,fontWeight:700,color:theme.text,marginBottom:4}}>No expense groups yet</div>
-                <div style={{fontSize:11,color:theme.muted,lineHeight:1.5}}>
-                  Start by adding people in settings, then click <strong>+ Add group</strong> to add expenses and split amounts.
+              <div style={{background:isDark?"linear-gradient(145deg,#242424,#1D1D1D)":"linear-gradient(145deg,#FFFFFF,#F4EFE7)",border:`1px solid ${theme.border}`,borderRadius:12,padding:"14px 14px",marginBottom:10,boxShadow:isDark?"inset 0 1px 0 rgba(255,255,255,0.03)":"0 10px 24px rgba(0,0,0,0.06)"}}>
+                <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}>
+                  <span style={{fontSize:16}}>✨</span>
+                  <div style={{fontSize:13,fontWeight:800,color:theme.text}}>{hasPeople?"No expense groups yet":"Let's set up your trip"}</div>
                 </div>
-                <button onClick={loadDataset1} style={{marginTop:10,padding:"7px 12px",borderRadius:7,border:`1px solid ${theme.border}`,background:theme.softBg,color:theme.text,fontSize:12,fontWeight:700,cursor:"pointer"}}>
-                  Load sample data
-                </button>
+                <div style={{fontSize:11,color:theme.muted,lineHeight:1.55}}>
+                  {hasPeople
+                    ? "Add your first expense group to start tracking shared costs and settlements."
+                    : "Start by adding people, then add expense groups and debts. Or load sample data to get started quickly."}
+                </div>
+                <div style={{display:"flex",gap:8,marginTop:11}}>
+                  <button onClick={()=>hasPeople?setShowAdd(true):setShowSettings(true)} style={{padding:"8px 12px",borderRadius:8,border:"none",background:"linear-gradient(135deg,#D08A47,#B66E2A)",color:"#FFF",fontSize:12,fontWeight:800,cursor:"pointer",boxShadow:"0 8px 18px rgba(176,108,37,0.28)"}}>
+                    {hasPeople?"+ Add group":"+ Add People"}
+                  </button>
+                  <button onClick={loadDataset1} style={{padding:"8px 12px",borderRadius:8,border:`1px solid ${theme.border}`,background:isDark?"#2C2C2C":"#F7F3EB",color:theme.text,fontSize:12,fontWeight:700,cursor:"pointer"}}>
+                    Load sample data
+                  </button>
+                </div>
               </div>
             )}
             {groups.map(g=>(
-              <GroupCard key={g.id} group={g} members={members} onUpdate={updateGroup} onDelete={deleteGroup}/>
+              <GroupCard key={g.id} group={g} members={members} onUpdate={updateGroup} onDelete={deleteGroup} isDark={isDark}/>
             ))}
             <div style={{background:theme.panelBg,border:`1px solid ${theme.border}`,borderRadius:8,padding:"10px 14px",marginBottom:8}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
@@ -863,28 +939,17 @@ export default function TripSplitter(){
         </div>
 
         {/* COL 2: Settlement — 25% (swapped) */}
-        <div className="col2" style={{width:"25%",borderRight:`1px solid ${theme.border}`,display:"flex",flexDirection:"column",background:theme.softBg}}>
-          {/* Column header with toggle inside */}
-          <div style={{padding:"14px 16px 10px",borderBottom:`1px solid ${theme.border}`,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-            <div>
-              <div style={{fontFamily:"'Nunito',sans-serif",fontSize:14,fontWeight:800,color:theme.text}}>Balances</div>
-              <div style={{fontSize:11,color:theme.muted,marginTop:1}}>{settleMode==="live"?"Live overpaid/underpaid status":"Recommended settlement transfers"}</div>
+        <div className="col2" style={{order:3,position:"relative",zIndex:1,width:"25%",display:"flex",flexDirection:"column",background:isDark?"#1F1F1F":"#FFF"}}>
+          {/* Column header */}
+          <div style={{padding:"14px 16px 10px 24px",borderBottom:`1px solid ${theme.border}`}}>
+            <div style={{fontFamily:"'Nunito',sans-serif",fontSize:14,fontWeight:800,color:theme.text,display:"flex",alignItems:"center",gap:8}}>
+              <span style={{display:"inline-flex",alignItems:"center",justifyContent:"center",width:20,height:20,borderRadius:4,background:isDark?"#2C2C2C":"#EDEDEB",border:isDark?"1px solid #3A3A3A":"1px solid #D8D4CE",fontSize:10,fontWeight:800,color:isDark?"#888":"#777",flexShrink:0}}>⇄</span>
+              Balances
             </div>
-            {/* Toggle lives here now */}
-            <div style={{display:"flex",background:isDark?"#303030":"#EEEBE6",borderRadius:7,padding:2}}>
-              {["live","settle"].map(mode=>(
-                <button key={mode} onClick={()=>setSettleMode(mode)} style={{
-                  padding:"3px 10px",borderRadius:5,border:"none",cursor:"pointer",
-                  fontSize:10,fontWeight:600,
-                  background:settleMode===mode?(isDark?"#4A4A4A":"#FFF"):"transparent",
-                  color:settleMode===mode?theme.text:theme.muted,
-                  transition:"all 0.15s",boxShadow:settleMode===mode?"0 1px 2px rgba(0,0,0,0.08)":"none"
-                }}>{mode==="live"?"Live":"Settle"}</button>
-              ))}
-            </div>
+            <div style={{fontSize:11,color:theme.muted,marginTop:1}}>Recommended settlement transfers</div>
           </div>
 
-          <div style={{flex:1,overflowY:"auto",padding:"14px 16px"}}>
+          <div style={{flex:1,overflowY:"auto",padding:"14px 16px 14px 24px"}}>
             {!hasAnyData?(
               <div style={{background:theme.panelBg,border:`1px dashed ${theme.border}`,borderRadius:8,padding:"12px 12px"}}>
                 <div style={{fontSize:12,fontWeight:700,color:theme.text,marginBottom:4}}>No balances yet</div>
@@ -892,55 +957,27 @@ export default function TripSplitter(){
                   Add people, then create expense groups and optional existing debts to see live balances and settlement transfers.
                 </div>
               </div>
-            ):settleMode==="live"?(
-              <>
-                {members.map(m=>{
-                  const net=balances.tripNet[m.id];
-                  const isPos=net>0.01, isNeg=net<-0.01;
-                  return(
-                    <div key={m.id} style={{display:"flex",alignItems:"center",gap:8,marginBottom:6,padding:"9px 11px",borderRadius:8,background:theme.panelBg,border:`1px solid ${theme.border}`}}>
-                      <Avatar member={m} size={24}/>
-                      <div style={{flex:1}}>
-                        <div style={{fontSize:12,fontWeight:600,color:theme.text}}>{m.name.split(" ")[0]}</div>
-                        <div style={{fontSize:10,color:theme.muted,marginTop:1}}>{isPos?"overpaid":isNeg?"underpaid":"even"}</div>
-                      </div>
-                      <span style={{fontSize:12,fontWeight:700,color:isPos?"#2A7A40":isNeg?"#B83010":theme.muted}}>
-                        {isPos?"+":isNeg?"-":""}{fmtShort(Math.abs(net))}
-                      </span>
-                    </div>
-                  );
-                })}
-                {existingDebts.length>0&&(
-                  <div style={{marginTop:10,padding:"9px 11px",borderRadius:8,background:theme.panelBg,border:`1px solid ${theme.border}`}}>
-                    <div style={{fontSize:10,color:theme.muted,fontWeight:600,marginBottom:3,textTransform:"uppercase",letterSpacing:0.4}}>Existing debt (sample)</div>
-                    <div style={{fontSize:12,color:theme.text}}>
-                      <span style={{fontWeight:700,color:members.find(m=>m.id===existingDebts[0]?.from)?.color}}>{members.find(m=>m.id===existingDebts[0]?.from)?.name}</span>
-                      <span style={{color:theme.muted}}> owes </span>
-                      <span style={{fontWeight:700,color:members.find(m=>m.id===existingDebts[0]?.to)?.color}}>{members.find(m=>m.id===existingDebts[0]?.to)?.name}</span>
-                    </div>
-                    <div style={{fontSize:13,fontWeight:700,color:theme.text,marginTop:3}}>{fmt((existingDebts[0]?.amount||0))}</div>
-                  </div>
-                )}
-              </>
             ):(
               <>
                 {balances.transactions.map((t,i)=>{
                   const f=members.find(m=>m.id===t.from), to=members.find(m=>m.id===t.to);
+                  const pct = totalSettlement>0 ? (t.amount/totalSettlement)*100 : 0;
                   return(
-                    <div key={i} style={{marginBottom:8,padding:"10px 12px",borderRadius:8,background:theme.panelBg,border:`1px solid ${theme.border}`}}>
-                      <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:6}}>
-                        <span style={{fontSize:10,fontWeight:700,color:theme.muted,width:16}}>#{i+1}</span>
-                        <Avatar member={f} size={20}/>
-                        <span style={{fontSize:11,color:"#AAA",marginLeft:1}}>→</span>
-                        <Avatar member={to} size={20}/>
-                        <span style={{fontSize:11,color:"#444",marginLeft:2}}>{f?.name.split(" ")[0]} → {to?.name.split(" ")[0]}</span>
+                    <div key={i} style={{marginBottom:9,padding:"10px 12px",borderRadius:10,background:isDark?"#252525":"#FFFFFF",border:`1px solid ${theme.border}`,boxShadow:isDark?"inset 0 1px 0 rgba(255,255,255,0.03)":"0 6px 14px rgba(0,0,0,0.05)"}}>
+                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+                        <span style={{fontSize:10,fontWeight:700,color:theme.muted,letterSpacing:0.4,textTransform:"uppercase"}}>Transfer #{i+1}</span>
+                        <span style={{fontSize:10,fontWeight:700,color:theme.muted}}>{pct.toFixed(1)}% of total</span>
                       </div>
-                      <div style={{fontSize:16,fontWeight:700,color:theme.text,textAlign:"right"}}>{fmt(t.amount)}</div>
+                      <div style={{fontSize:12,fontWeight:600,color:theme.text,marginBottom:8}}>
+                        {f?.name.split(" ")[0]} → {to?.name.split(" ")[0]}
+                      </div>
+                      <div style={{fontSize:16,fontWeight:800,color:"#C17D3C",textAlign:"right"}}>{fmt(t.amount)}</div>
                     </div>
                   );
                 })}
-                <div style={{marginTop:4,padding:"9px 11px",borderRadius:8,background:theme.panelBg,border:`1px solid ${theme.border}`}}>
-                  <div style={{fontSize:11,color:theme.muted}}>All {members.length} members settle with <strong style={{color:theme.text}}>{balances.transactions.length}</strong> transfer{balances.transactions.length!==1?"s":""}</div>
+                <div style={{marginTop:6,padding:"10px 11px",borderRadius:10,background:isDark?"#242424":"#FFFFFF",border:`1px solid ${theme.border}`}}>
+                  <div style={{fontSize:11,color:theme.muted,marginBottom:3}}>All {visibleMembers.length} members settle with <strong style={{color:theme.text}}>{balances.transactions.length}</strong> transfer{balances.transactions.length!==1?"s":""}</div>
+                  <div style={{fontSize:12,fontWeight:700,color:theme.text}}>Total settlement: {fmt(totalSettlement)}</div>
                 </div>
               </>
             )}
@@ -950,13 +987,22 @@ export default function TripSplitter(){
         </div>
 
         {/* COL 3: Trip overview — 25% (swapped) */}
-        <div className="col3" style={{width:"25%",display:"flex",flexDirection:"column",background:theme.softBg}}>
-          <div style={{padding:"14px 16px 10px",borderBottom:`1px solid ${theme.border}`}}>
-            <div style={{fontFamily:"'Nunito',sans-serif",fontSize:14,fontWeight:800,color:theme.text}}>Overview</div>
+        <div className="col3" style={{order:2,position:"relative",zIndex:2,width:"25%",marginRight:-8,display:"flex",flexDirection:"column",background:isDark?theme.panelBg:"#FFF",boxShadow:isDark?"4px 0 10px rgba(0,0,0,0.25)":"4px 0 10px rgba(0,0,0,0.08)"}}>
+          <div style={{padding:"14px 16px 10px 24px",borderBottom:`1px solid ${theme.border}`}}>
+            <div style={{fontFamily:"'Nunito',sans-serif",fontSize:14,fontWeight:800,color:theme.text,display:"flex",alignItems:"center",gap:8}}>
+              <span style={{display:"inline-flex",alignItems:"center",justifyContent:"center",width:20,height:20,borderRadius:4,background:isDark?"#2C2C2C":"#EDEDEB",border:isDark?"1px solid #3A3A3A":"1px solid #D8D4CE",fontSize:11,fontWeight:800,color:isDark?"#888":"#777",flexShrink:0}}>◉</span>
+              Overview
+            </div>
             <div style={{fontSize:11,color:theme.muted,marginTop:1}}>Spend per person</div>
           </div>
-          <div style={{flex:1,overflowY:"auto",padding:"14px 16px"}}>
-            {!hasAnyData&&(
+          <div style={{flex:1,overflowY:"auto",padding:"14px 16px 14px 24px"}}>
+            {!hasPeople&&(
+              <div style={{marginBottom:12,padding:"12px 14px",borderRadius:8,background:theme.panelBg,border:`1px dashed ${theme.border}`}}>
+                <div style={{fontSize:12,fontWeight:700,color:theme.text,marginBottom:4}}>Overview is empty</div>
+                <div style={{fontSize:11,color:theme.muted,lineHeight:1.5}}>Add people first to unlock per-person share and paid-vs-owed insights.</div>
+              </div>
+            )}
+            {hasPeople&&!hasAnyData&&(
               <div style={{marginBottom:12,padding:"12px 14px",borderRadius:8,background:theme.panelBg,border:`1px dashed ${theme.border}`}}>
                 <div style={{fontSize:12,fontWeight:700,color:theme.text,marginBottom:4}}>Overview is empty</div>
                 <div style={{fontSize:11,color:theme.muted,lineHeight:1.5}}>Add your first expense group to populate totals, per-person share, and paid-vs-owed cards here.</div>
@@ -969,19 +1015,19 @@ export default function TripSplitter(){
               <div style={{display:"flex",alignItems:"baseline",gap:6}}>
                 <span style={{fontFamily:"'Nunito',sans-serif",fontSize:22,fontWeight:800,color:theme.text,lineHeight:1}}>{fmt(grandTotal)}</span>
               </div>
-              <div style={{fontSize:11,color:theme.muted,marginTop:4}}>{groups.length} expense groups · {members.length} people</div>
+              <div style={{fontSize:11,color:theme.muted,marginTop:4}}>{groups.length} expense groups · {visibleMembers.length} people</div>
             </div>
 
             {/* Share bars */}
             <div style={{marginBottom:18}}>
               <div style={{fontSize:10,fontWeight:600,color:theme.muted,letterSpacing:0.5,marginBottom:10,textTransform:"uppercase"}}>Each person's share</div>
-              {members.map(m=><MemberBar key={m.id} member={m} value={balances.owed[m.id]} max={maxSpend} textColor={theme.text} valueColor={theme.text} trackColor={isDark?"#3A3A3A":"#F0EDE8"}/>) }
+              {visibleMembers.map(m=><MemberBar key={m.id} member={m} value={balances.owed[m.id]} max={maxSpend} textColor={theme.text} valueColor={theme.text} trackColor={isDark?"#3A3A3A":"#F0EDE8"}/>)}
             </div>
 
             {/* Paid vs owed rows */}
             <div>
               <div style={{fontSize:10,fontWeight:600,color:theme.muted,letterSpacing:0.5,marginBottom:8,textTransform:"uppercase"}}>Paid vs owed</div>
-              {members.map(m=>{
+              {visibleMembers.map(m=>{
                 const paid=balances.paid[m.id], owed=balances.owed[m.id], net=paid-owed;
                 const isPos=net>0.01, isNeg=net<-0.01;
                 return(
@@ -989,7 +1035,7 @@ export default function TripSplitter(){
                     <Avatar member={m} size={24}/>
                     <div style={{flex:1}}>
                       <div style={{fontSize:11,fontWeight:600,color:theme.text}}>{m.name.split(" ")[0]}</div>
-                      <div style={{fontSize:10,color:theme.muted}}>paid {fmtShort(paid)}</div>
+                      <div style={{fontSize:10,color:isPos?"#2A7A40":isNeg?"#B83010":theme.muted}}>{isPos?"receives":isNeg?"pays":"settled"}</div>
                     </div>
                     <span style={{fontSize:12,fontWeight:700,color:isPos?"#2A7A40":isNeg?"#B83010":theme.muted}}>
                       {isPos?"+":isNeg?"-":""}{fmtShort(Math.abs(net))}
@@ -1005,11 +1051,14 @@ export default function TripSplitter(){
 
       {showAdd&&<AddGroupModal members={members} onAdd={addGroup} onClose={()=>setShowAdd(false)}/>}
       {showSettings&&<TripSettingsModal tripName={tripName} members={members} onSave={saveSettings} onClose={()=>setShowSettings(false)}/>}
-      {showExistingDebts&&<ExistingDebtsModal members={members} debts={existingDebts} onSave={setExistingDebts} onClose={()=>setShowExistingDebts(false)}/>}
+      {showExistingDebts&&<ExistingDebtsModal members={members} debts={existingDebts} onSave={handleSaveDebts} onClose={()=>setShowExistingDebts(false)}/>}
       {showReset&&<ResetDataModal onClose={()=>setShowReset(false)} onConfirm={resetAllData}/>}
     </div>
   );
 }
+
+
+
 
 
 
