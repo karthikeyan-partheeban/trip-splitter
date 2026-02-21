@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useState } from "react";
 
 // ─── DATA ────────────────────────────────────────────────────────────────────
 const MEMBER_COLORS = ["#C17D3C","#3C7DC1","#7C3CC1","#3CC17D","#C13C6A","#3CC1B8","#C1A03C","#6A3CC1"];
