@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Analytics } from '@vercel/analytics/react';
 
 // ─── DATA ────────────────────────────────────────────────────────────────────
 const MEMBER_COLORS = ["#C17D3C","#3C7DC1","#7C3CC1","#3CC17D","#C13C6A","#3CC1B8","#C1A03C","#6A3CC1"];
@@ -1007,27 +1008,7 @@ export default function TripSplitter(){
       {showSettings&&<TripSettingsModal tripName={tripName} members={members} onSave={saveSettings} onClose={()=>setShowSettings(false)}/>}
       {showExistingDebts&&<ExistingDebtsModal members={members} debts={existingDebts} onSave={setExistingDebts} onClose={()=>setShowExistingDebts(false)}/>}
       {showReset&&<ResetDataModal onClose={()=>setShowReset(false)} onConfirm={resetAllData}/>}
+      <Analytics />
     </div>
   );
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
