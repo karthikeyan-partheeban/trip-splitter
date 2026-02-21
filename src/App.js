@@ -3,24 +3,25 @@ import { useState } from "react";
 // ─── DATA ────────────────────────────────────────────────────────────────────
 const MEMBER_COLORS = ["#C17D3C","#3C7DC1","#7C3CC1","#3CC17D","#C13C6A","#3CC1B8","#C1A03C","#6A3CC1"];
 
-const INITIAL_MEMBERS = [
-  { id: "K", name: "Karthikeyan", color: "#C17D3C", initials: "KA" },
-  { id: "J", name: "Jalvin",      color: "#3C7DC1", initials: "JA" },
-  { id: "S", name: "Sudhan",      color: "#7C3CC1", initials: "SU" },
-  { id: "Y", name: "Yuvraj",      color: "#3CC17D", initials: "YU" },
+const DATASET_1_MEMBERS = [
+  { id: "K", name: "Avery",  color: "#C17D3C", initials: "AV" },
+  { id: "J", name: "Jordan", color: "#3C7DC1", initials: "JO" },
+  { id: "S", name: "Sam",    color: "#7C3CC1", initials: "SA" },
+  { id: "Y", name: "Riley",  color: "#3CC17D", initials: "RI" },
 ];
 
-const INITIAL_GROUPS = [
-  { id:"g1", label:"Flight Tickets",         emoji:"✈️",  paidBy:"J", total:76621,    note:"Jalvin paid for Karthikeyan, Jalvin & Sudhan only", shares:{K:25540.33,J:25540.33,S:25540.34,Y:0} },
-  { id:"g2", label:"Yuvraj's Ticket",         emoji:"🎟️",  paidBy:"Y", total:24392,    note:"Yuvraj bears this alone",                          shares:{K:0,J:0,S:0,Y:24392} },
-  { id:"g3", label:"Common Cash",             emoji:"💵",  paidBy:"J", total:34014.83, note:"Shared equally among all 4",                       shares:{K:8503.71,J:8503.71,S:8503.71,Y:8503.70} },
-  { id:"g4", label:"Yuvraj ATM Cash",         emoji:"🏧",  paidBy:"Y", total:20826,    note:"Each person's individual spend",                   shares:{K:7480.74,J:4448.42,S:4448.42,Y:4448.42} },
-  { id:"g5", label:"Souvenirs (Yuvraj Card)", emoji:"🛍️",  paidBy:"Y", total:6840,     note:"Per person souvenir spend",                        shares:{K:3710.11,J:0,S:777.89,Y:2352} },
-  { id:"g6", label:"Hotels (3 Nights)",       emoji:"🏨",  paidBy:"K", total:28526.11, note:"Karthikeyan paid, split equally",                  shares:{K:7131.53,J:7131.53,S:7131.53,Y:7131.52} },
-  { id:"g7", label:"Karthikeyan Cash",        emoji:"💰",  paidBy:"K", total:39231,    note:"Karthikeyan's cash spend, split equally",          shares:{K:9807.75,J:9807.75,S:9807.75,Y:9807.75} },
+const DATASET_1_GROUPS = [
+  { id:"g1", label:"Flight Tickets",      emoji:"\u2708\uFE0F", paidBy:"J", total:76621,    note:"Paid for three travelers",        shares:{K:25540.33,J:25540.33,S:25540.34,Y:0} },
+  { id:"g2", label:"Solo Ticket",         emoji:"\uD83C\uDF9F\uFE0F", paidBy:"Y", total:24392,    note:"One person expense",              shares:{K:0,J:0,S:0,Y:24392} },
+  { id:"g3", label:"Common Cash",         emoji:"\uD83D\uDCB5", paidBy:"J", total:34014.83, note:"Shared equally among all 4",     shares:{K:8503.71,J:8503.71,S:8503.71,Y:8503.70} },
+  { id:"g4", label:"ATM Cash",            emoji:"\uD83C\uDFE7", paidBy:"Y", total:20826,    note:"Individual spend by person",      shares:{K:7480.74,J:4448.42,S:4448.42,Y:4448.42} },
+  { id:"g5", label:"Souvenirs",           emoji:"\uD83D\uDED2", paidBy:"Y", total:6840,     note:"Per person souvenir spend",       shares:{K:3710.11,J:0,S:777.89,Y:2352} },
+  { id:"g6", label:"Hotels (3 Nights)",   emoji:"\uD83C\uDFE8", paidBy:"K", total:28526.11, note:"Split equally",                  shares:{K:7131.53,J:7131.53,S:7131.53,Y:7131.52} },
+  { id:"g7", label:"Shared Cash",         emoji:"\uD83D\uDCB0", paidBy:"K", total:39231,    note:"Split equally among all",         shares:{K:9807.75,J:9807.75,S:9807.75,Y:9807.75} },
 ];
 
-const INITIAL_EXISTING_DEBTS = [{ id:"d1", from:"J", to:"K", amount:40000 }];
+const DATASET_1_EXISTING_DEBTS = [{ id:"d1", from:"J", to:"K", amount:40000 }];
+const DATASET_1_TRIP_NAME = "Thailand Trip";
 
 // ─── HELPERS ─────────────────────────────────────────────────────────────────
 const fmt      = n => "₹" + Math.abs(n).toLocaleString("en-IN", { minimumFractionDigits:2, maximumFractionDigits:2 });
@@ -29,6 +30,10 @@ const fmtShort = n => "₹" + Math.abs(n).toLocaleString("en-IN", { maximumFract
 function makeInitials(name) {
   const w = name.trim().split(/\s+/);
   return w.length >= 2 ? (w[0][0]+w[1][0]).toUpperCase() : name.slice(0,2).toUpperCase();
+}
+
+function cloneData(data){
+  return JSON.parse(JSON.stringify(data));
 }
 
 function computeBalances(members, groups, existingDebts=[]) {
@@ -71,17 +76,17 @@ function Avatar({member,size=28}){
 }
 
 // ─── MEMBER BAR ──────────────────────────────────────────────────────────────
-function MemberBar({member,value,max}){
+function MemberBar({member,value,max,textColor="#2C2C2C",valueColor="#1A1A1A",trackColor="#F0EDE8"}){
   const pct=max>0?Math.min(100,Math.abs(value)/max*100):0;
   return(
     <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}>
       <Avatar member={member} size={26}/>
       <div style={{flex:1}}>
         <div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}>
-          <span style={{fontSize:11,fontWeight:600,color:"#2C2C2C"}}>{member.name}</span>
-          <span style={{fontSize:11,fontWeight:700,color:"#1A1A1A"}}>{fmtShort(value)}</span>
+          <span style={{fontSize:11,fontWeight:600,color:textColor}}>{member.name}</span>
+          <span style={{fontSize:11,fontWeight:700,color:valueColor}}>{fmtShort(value)}</span>
         </div>
-        <div style={{height:4,background:"#F0EDE8",borderRadius:2,overflow:"hidden"}}>
+        <div style={{height:4,background:trackColor,borderRadius:2,overflow:"hidden"}}>
           <div style={{width:pct+"%",height:"100%",background:member.color,borderRadius:2,transition:"width 0.4s ease"}}/>
         </div>
       </div>
@@ -278,6 +283,7 @@ function AddGroupModal({members,onAdd,onClose}){
               onChange={e=>setForm({...form,label:e.target.value})} style={inputStyle}/>
           </div>
         </div>
+        
 
         {/* Total + Paid by */}
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:12}}>
@@ -293,6 +299,7 @@ function AddGroupModal({members,onAdd,onClose}){
             </select>
           </div>
         </div>
+        
 
         {/* Note */}
         <div style={{marginBottom:16}}>
@@ -323,6 +330,7 @@ function AddGroupModal({members,onAdd,onClose}){
             ))}
           </div>
         </div>
+        
 
         {/* ── EQUAL mode: just show preview ──────────────────────────────── */}
         {form.splitMode==="equal"&&total>0&&(
@@ -606,23 +614,79 @@ function ExistingDebtsModal({members,debts,onSave,onClose}){
   );
 }
 
+function ResetDataModal({onClose,onConfirm}){
+  const [consent,setConsent]=useState(false);
+  return(
+    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.45)",zIndex:1200,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
+      <div style={{background:"#FFF",borderRadius:14,padding:22,width:440,maxWidth:"95vw",boxShadow:"0 20px 60px rgba(0,0,0,0.2)"}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+          <h3 style={{margin:0,fontSize:16,fontWeight:800,fontFamily:"'Nunito',sans-serif"}}>Reset Data</h3>
+          <button onClick={onClose} style={{border:"none",background:"none",fontSize:18,cursor:"pointer",color:"#777"}}>✕</button>
+        </div>
+        <div style={{fontSize:13,color:"#444",lineHeight:1.5,background:"#FFF8F0",border:"1px solid #F0D8C0",borderRadius:10,padding:"12px 14px",marginBottom:12}}>
+          This action will permanently clear your current trip details, groups, balances, and existing debts.
+          <br/>
+          You can still load sample data anytime from the empty-state card in Expense Groups.
+        </div>
+        <label style={{display:"flex",alignItems:"flex-start",gap:8,fontSize:12,color:"#444",marginBottom:14,cursor:"pointer"}}>
+          <input type="checkbox" checked={consent} onChange={e=>setConsent(e.target.checked)} style={{marginTop:2}}/>
+          <span>I consent and understand that all current changes will be lost.</span>
+        </label>
+        <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
+          <button onClick={onClose} style={{padding:"8px 12px",borderRadius:7,border:"1px solid #BBB",background:"#FFF",fontSize:12,fontWeight:600,color:"#444",cursor:"pointer"}}>Cancel</button>
+          <button disabled={!consent} onClick={onConfirm} style={{padding:"8px 12px",borderRadius:7,border:"none",background:consent?"#B83010":"#AAA",color:"#FFF",fontSize:12,fontWeight:700,cursor:consent?"pointer":"not-allowed"}}>Proceed Reset</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function TripSplitter(){
-  const [tripName,setTripName]         = useState("Thailand 2025");
-  const [members,setMembers]           = useState(INITIAL_MEMBERS);
-  const [groups,setGroups]             = useState(INITIAL_GROUPS);
-  const [existingDebts,setExistingDebts] = useState(INITIAL_EXISTING_DEBTS);
+  const [tripName,setTripName]         = useState(DATASET_1_TRIP_NAME);
+  const [members,setMembers]           = useState(cloneData(DATASET_1_MEMBERS));
+  const [groups,setGroups]             = useState(cloneData(DATASET_1_GROUPS));
+  const [existingDebts,setExistingDebts] = useState(cloneData(DATASET_1_EXISTING_DEBTS));
   const [settleMode,setSettleMode]     = useState("live");
   const [showAdd,setShowAdd]           = useState(false);
   const [showSettings,setShowSettings] = useState(false);
   const [showExistingDebts,setShowExistingDebts] = useState(false);
+  const [themeMode,setThemeMode]       = useState("light");
+  const [showReset,setShowReset]       = useState(false);
 
   const balances   = computeBalances(members,groups,existingDebts);
   const grandTotal = groups.reduce((s,g)=>s+g.total,0);
   const maxSpend   = Math.max(...members.map(m=>balances.owed[m.id]),1);
+  const isDark     = themeMode==="dark";
+  const hasAnyData = groups.length>0 || existingDebts.length>0;
+
+  const theme = isDark
+    ? {
+        appBg:"#151515", panelBg:"#1F1F1F", softBg:"#252525", topBg:"#000000",
+        text:"#EAEAEA", muted:"#BEBEBE", border:"#3A3A3A", accentBg:"#2F2A20", accentBorder:"#5B4A33",
+        topText:"#F4F7FB", topMuted:"#AFC3D8", topChipBg:"#13263B", topChipBorder:"#284666"
+      }
+    : {
+        appBg:"#F7F5F1", panelBg:"#FFF", softBg:"#F7F5F1", topBg:"#000000",
+        text:"#1A1A1A", muted:"#777", border:"#E8E4DE", accentBg:"#F2E8DA", accentBorder:"#DDCFBA",
+        topText:"#F4F7FB", topMuted:"#AFC3D8", topChipBg:"#1A3148", topChipBorder:"#355574"
+      };
 
   function updateGroup(u){ setGroups(gs=>gs.map(g=>g.id===u.id?u:g)); }
   function deleteGroup(id){ setGroups(gs=>gs.filter(g=>g.id!==id)); }
   function addGroup(g){ setGroups(gs=>[...gs,g]); }
+  function loadDataset1(){
+    setTripName(DATASET_1_TRIP_NAME);
+    setMembers(cloneData(DATASET_1_MEMBERS));
+    setGroups(cloneData(DATASET_1_GROUPS));
+    setExistingDebts(cloneData(DATASET_1_EXISTING_DEBTS));
+  }
+  function resetAllData(){
+    setTripName("New Trip");
+    setMembers(DATASET_1_MEMBERS.map(m=>({...m,name:"",initials:"--"})));
+    setGroups([]);
+    setExistingDebts([]);
+    setShowReset(false);
+  }
   function saveSettings(name,people){
     setTripName(name);
     setMembers(people);
@@ -663,103 +727,157 @@ export default function TripSplitter(){
   }
 
   return(
-    <div style={{minHeight:"100vh",background:"#F7F5F1",fontFamily:"'Inter',-apple-system,sans-serif"}}>
+    <div className={isDark?"dark-mode":""} style={{minHeight:"100vh",background:theme.appBg,color:theme.text,fontFamily:"'Inter',-apple-system,sans-serif"}}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@700;800&family=Inter:wght@400;500;600;700&display=swap');
         *{box-sizing:border-box}
         ::-webkit-scrollbar{width:4px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:#D4CFC6;border-radius:4px}
         button:hover{opacity:0.85}
         input:focus,select:focus{outline:2px solid #C17D3C40;border-color:#C17D3C!important}
+        .dark-mode .col2{background:#252525!important}
+        .dark-mode .col2 [style*="background:#FFF"],
+        .dark-mode .col3 [style*="background:#FFF"]{background:#1F1F1F!important}
+        .dark-mode .col2 [style*="border:\"1px solid #E8E4DE\""],
+        .dark-mode .col3 [style*="border:\"1px solid #E8E4DE\""],
+        .dark-mode .col2 [style*="borderBottom:\"1px solid #E8E4DE\""],
+        .dark-mode .col2 [style*="borderRight:\"1px solid #E8E4DE\""]{border-color:#3A3A3A!important}
+        .dark-mode .col2 [style*="color:#1A1A1A"],
+        .dark-mode .col2 [style*="color:#222"],
+        .dark-mode .col2 [style*="color:#444"],
+        .dark-mode .col3 [style*="color:#1A1A1A"],
+        .dark-mode .col3 [style*="color:#222"],
+        .dark-mode .col3 [style*="color:#444"]{color:#EAEAEA!important}
+        .dark-mode .col2 [style*="color:#666"],
+        .dark-mode .col2 [style*="color:#777"],
+        .dark-mode .col2 [style*="color:#888"],
+        .dark-mode .col2 [style*="color:#999"],
+        .dark-mode .col2 [style*="color:#AAA"],
+        .dark-mode .col3 [style*="color:#666"],
+        .dark-mode .col3 [style*="color:#777"],
+        .dark-mode .col3 [style*="color:#888"],
+        .dark-mode .col3 [style*="color:#999"]{color:#BEBEBE!important}
       `}</style>
 
       {/* ── TOP BAR ──────────────────────────────────────────────────────────── */}
-      <div style={{background:"#FFF",borderBottom:"1px solid #E8E4DE",padding:"0 20px",height:50,display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,zIndex:100}}>
-
-        {/* Left: logo · trip name chip · member avatars */}
-        <div style={{display:"flex",alignItems:"center",gap:10}}>
-          <span style={{fontSize:18}}>✈️</span>
-          <span style={{fontFamily:"'Nunito',sans-serif",fontSize:16,color:"#1A1A1A",fontWeight:800,letterSpacing:-0.3}}>TripSplit</span>
-          <div style={{width:1,height:16,background:"#E8E4DE"}}/>
-
-          {/* Trip name chip */}
-          <button onClick={()=>setShowSettings(true)} style={{display:"flex",alignItems:"center",gap:5,background:"#F7F5F1",border:"1px solid #E8E4DE",borderRadius:7,padding:"3px 10px",cursor:"pointer"}}>
-            <span style={{fontSize:12,fontWeight:600,color:"#444"}}>{tripName}</span>
-            <span style={{fontSize:10,color:"#999"}}>✎</span>
+      {/* Header */}
+      <div style={{background:theme.topBg,borderBottom:`1px solid ${theme.topChipBorder}`,boxShadow:"0 10px 28px rgba(0,0,0,0.21)",padding:"0 20px",height:62,display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,zIndex:200}}>
+        <div style={{display:"flex",alignItems:"center",gap:14,minWidth:0}}>
+          <div style={{display:"flex",alignItems:"center",gap:9,paddingRight:8,borderRight:`1px solid ${theme.topChipBorder}`}}>
+            <div style={{width:24,height:24,borderRadius:8,background:"radial-gradient(circle at 30% 30%, #8ED1FF 0%, #3B82F6 58%, #173964 100%)",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"inset 0 0 0 1px rgba(255,255,255,0.24)"}}>
+              <span style={{fontSize:13,filter:"drop-shadow(0 1px 1px rgba(0,0,0,0.35))"}}>✈</span>
+            </div>
+            <div style={{fontFamily:"'Nunito',sans-serif",fontSize:20,fontWeight:800,color:theme.topText,lineHeight:1}}>Trip Expense Planner</div>
+          </div>
+          <button onClick={()=>setShowSettings(true)} style={{background:theme.topChipBg,border:`1px solid ${theme.topChipBorder}`,borderRadius:999,padding:"7px 12px",display:"flex",alignItems:"center",gap:7,cursor:"pointer",color:theme.topText,minWidth:0}}>
+            <span style={{fontSize:12,fontWeight:700,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",maxWidth:140}}>{tripName}</span>
+            <span style={{display:"inline-flex",alignItems:"center",justifyContent:"center",color:theme.topMuted}}><svg width="11" height="11" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M4 20H8L18.5 9.5C19.3 8.7 19.3 7.3 18.5 6.5L17.5 5.5C16.7 4.7 15.3 4.7 14.5 5.5L4 16V20Z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg></span>
           </button>
-
-          {/* Member avatar strip */}
-          <div style={{display:"flex",alignItems:"center"}}>
-            {members.map((m,i)=>(
-              <div key={m.id} title={m.name} style={{marginLeft:i===0?4:-6,cursor:"default"}}>
-                <Avatar member={m} size={24}/>
-              </div>
+          <div style={{display:"flex",alignItems:"center",marginLeft:2}}>
+            {members.map((m,idx)=>(
+              <span key={m.id} style={{marginLeft:idx===0?0:-7}}>
+                <Avatar member={m} size={26}/>
+              </span>
             ))}
-            <button onClick={()=>setShowSettings(true)} title="Add / manage people"
-              style={{marginLeft:4,width:24,height:24,borderRadius:"50%",border:"1.5px dashed #AAA",background:"transparent",color:"#999",fontSize:14,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:0,lineHeight:1}}>
+            <button onClick={()=>setShowSettings(true)} title="Trip settings" style={{marginLeft:7,width:26,height:26,borderRadius:"50%",border:`1px dashed ${theme.topMuted}`,background:"transparent",color:theme.topMuted,fontSize:14,cursor:"pointer",display:"inline-flex",alignItems:"center",justifyContent:"center",padding:0}}>
               +
             </button>
           </div>
         </div>
 
-        {/* Right: export only */}
-        <button onClick={handlePrint} style={{padding:"5px 12px",borderRadius:6,border:"1px solid #E8E4DE",background:"#F7F5F1",color:"#444",fontSize:11,fontWeight:600,cursor:"pointer"}}>
-          Export PDF
-        </button>
-      </div>
-
+        <div style={{display:"flex",alignItems:"center",gap:10}}>
+          <button onClick={()=>setThemeMode(m=>m==="light"?"dark":"light")} style={{display:"flex",alignItems:"center",gap:8,padding:"4px 10px",borderRadius:999,border:`1px solid ${theme.topChipBorder}`,background:theme.topChipBg,color:theme.topText,fontSize:11,fontWeight:700,cursor:"pointer"}}>
+            <span style={{fontSize:10,color:theme.topMuted}}>{isDark?"Dark":"Light"}</span>
+            <span style={{width:34,height:18,borderRadius:999,background:isDark?"#4B3626":"#D6D0C6",position:"relative",display:"inline-block"}}>
+              <span style={{position:"absolute",top:2,left:isDark?18:2,width:14,height:14,borderRadius:"50%",background:isDark?"#E1B07A":"#FFF",boxShadow:"0 1px 2px rgba(0,0,0,0.25)",transition:"left 0.2s ease"}}/>
+            </span>
+          </button>
+          <button onClick={handlePrint} style={{padding:"6px 12px",borderRadius:999,border:`1px solid ${theme.topChipBorder}`,background:theme.topChipBg,color:theme.topText,fontSize:11,fontWeight:600,cursor:"pointer"}}>
+            Export PDF
+          </button>
+          <button onClick={()=>setShowReset(true)} style={{padding:"6px 12px",borderRadius:999,border:`1px solid #7A2B2B`,background:isDark?"#3B1818":"#5A1F1F",color:"#FFD9D4",fontSize:11,fontWeight:700,cursor:"pointer"}}>
+            Reset
+          </button>
+        </div>
+        </div>
+      
       {/* ── THREE COLUMNS ──────────────────────────────────────────────────────── */}
-      <div style={{display:"flex",height:"calc(100vh - 54px)",overflow:"hidden"}}>
+      <div style={{display:"flex",height:"calc(100vh - 66px)",overflow:"hidden",paddingTop:4}}>
 
-        {/* COL 1: Groups — 50% */}
-        <div style={{width:"50%",borderRight:"1px solid #E8E4DE",display:"flex",flexDirection:"column",background:"#FFF"}}>
-          <div style={{padding:"14px 16px 10px",borderBottom:"1px solid #E8E4DE",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                {/* COL 1: Groups - 50% */}
+        <div style={{width:"50%",borderRight:`1px solid ${theme.border}`,display:"flex",flexDirection:"column",background:theme.panelBg}}>
+          <div style={{padding:"14px 16px 10px",borderBottom:`1px solid ${theme.border}`,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
             <div>
-              <div style={{fontFamily:"'Nunito',sans-serif",fontSize:14,fontWeight:800,color:"#1A1A1A"}}>Expense Groups</div>
-              <div style={{fontSize:11,color:"#777",marginTop:1}}>{groups.length} groups · click to expand & edit inline</div>
+              <div style={{fontFamily:"'Nunito',sans-serif",fontSize:14,fontWeight:800,color:theme.text}}>Expense Groups</div>
+              <div style={{fontSize:11,color:theme.muted,marginTop:1}}>{groups.length} groups - click to expand and edit inline</div>
             </div>
             <div style={{display:"flex",gap:8}}>
-              <button onClick={()=>setShowExistingDebts(true)} style={{padding:"5px 12px",borderRadius:7,border:"1px solid #E8E4DE",background:"#FFF",color:"#333",fontSize:12,fontWeight:600,cursor:"pointer"}}>
+              <button onClick={()=>setShowExistingDebts(true)} style={{padding:"5px 12px",borderRadius:7,border:`1px solid ${theme.border}`,background:theme.panelBg,color:theme.text,fontSize:12,fontWeight:600,cursor:"pointer"}}>
                 Existing Debts
               </button>
-              <button onClick={()=>setShowAdd(true)} style={{padding:"5px 12px",borderRadius:7,border:"1px solid #E8E4DE",background:"#FFF",color:"#333",fontSize:12,fontWeight:600,cursor:"pointer"}}>
+              <button onClick={()=>setShowAdd(true)} style={{padding:"5px 12px",borderRadius:7,border:`1px solid ${theme.border}`,background:theme.panelBg,color:theme.text,fontSize:12,fontWeight:600,cursor:"pointer"}}>
                 + Add group
               </button>
             </div>
           </div>
           <div style={{flex:1,overflowY:"auto",padding:"10px 12px"}}>
+            {groups.length===0&&(
+              <div style={{background:theme.panelBg,border:`1px dashed ${theme.border}`,borderRadius:8,padding:"12px 14px",marginBottom:8}}>
+                <div style={{fontSize:12,fontWeight:700,color:theme.text,marginBottom:4}}>No expense groups yet</div>
+                <div style={{fontSize:11,color:theme.muted,lineHeight:1.5}}>
+                  Start by adding people in settings, then click <strong>+ Add group</strong> to add expenses and split amounts.
+                </div>
+                <button onClick={loadDataset1} style={{marginTop:10,padding:"7px 12px",borderRadius:7,border:`1px solid ${theme.border}`,background:theme.softBg,color:theme.text,fontSize:12,fontWeight:700,cursor:"pointer"}}>
+                  Load sample data
+                </button>
+              </div>
+            )}
             {groups.map(g=>(
               <GroupCard key={g.id} group={g} members={members} onUpdate={updateGroup} onDelete={deleteGroup}/>
             ))}
-            {/* Pre-trip debt static card */}
-            <div style={{background:"#FFF",border:"1px solid #E8E4DE",borderRadius:8,padding:"10px 14px",display:"flex",alignItems:"center",gap:10,marginBottom:8}}>
-              <span style={{fontSize:18}}>🔁</span>
-              <div style={{flex:1}}>
-                <div style={{fontSize:12,fontWeight:700,color:"#444"}}>Pre-trip Debt</div>
-                <div style={{fontSize:11,color:"#888"}}>
-                  {members.find(m=>m.id===existingDebts[0]?.from)?.name} owes {members.find(m=>m.id===existingDebts[0]?.to)?.name}
-                </div>
+            <div style={{background:theme.panelBg,border:`1px solid ${theme.border}`,borderRadius:8,padding:"10px 14px",marginBottom:8}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+                <div style={{fontSize:12,fontWeight:700,color:theme.text}}>Existing Debts</div>
+                <div style={{fontSize:11,color:theme.muted,fontWeight:700}}>{existingDebts.length} item{existingDebts.length===1?"":"s"}</div>
               </div>
-              <div style={{fontSize:13,fontWeight:800,color:"#666"}}>{fmt((existingDebts[0]?.amount||0))}</div>
+              {existingDebts.length===0?(
+                <div style={{fontSize:11,color:theme.muted,lineHeight:1.5}}>
+                  Add prior debts using the <strong>Existing Debts</strong> button above. These are included in final settlement.
+                </div>
+              ):(
+                <>
+                  {existingDebts.map(d=>(
+                    <div key={d.id} style={{display:"flex",justifyContent:"space-between",gap:8,fontSize:11,marginBottom:4,color:theme.muted}}>
+                      <span>{members.find(m=>m.id===d.from)?.name||d.from} owes {members.find(m=>m.id===d.to)?.name||d.to}</span>
+                      <span style={{fontWeight:700,color:theme.text}}>{fmt(d.amount)}</span>
+                    </div>
+                  ))}
+                  <div style={{fontSize:12,fontWeight:800,color:theme.text,marginTop:4}}>
+                    Total: {fmt(existingDebts.reduce((s,d)=>s+(d.amount||0),0))}
+                  </div>
+                </>
+              )}
             </div>
           </div>
+        
+
         </div>
 
         {/* COL 2: Settlement — 25% (swapped) */}
-        <div style={{width:"25%",borderRight:"1px solid #E8E4DE",display:"flex",flexDirection:"column",background:"#F7F5F1"}}>
+        <div className="col2" style={{width:"25%",borderRight:`1px solid ${theme.border}`,display:"flex",flexDirection:"column",background:theme.softBg}}>
           {/* Column header with toggle inside */}
-          <div style={{padding:"14px 16px 10px",borderBottom:"1px solid #E8E4DE",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+          <div style={{padding:"14px 16px 10px",borderBottom:`1px solid ${theme.border}`,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
             <div>
-              <div style={{fontFamily:"'Nunito',sans-serif",fontSize:14,fontWeight:800,color:"#1A1A1A"}}>Balances</div>
-              <div style={{fontSize:11,color:"#777",marginTop:1}}>{settleMode==="live"?"Trip positions":"Who pays whom"}</div>
+              <div style={{fontFamily:"'Nunito',sans-serif",fontSize:14,fontWeight:800,color:theme.text}}>Balances</div>
+              <div style={{fontSize:11,color:theme.muted,marginTop:1}}>{settleMode==="live"?"Live overpaid/underpaid status":"Recommended settlement transfers"}</div>
             </div>
             {/* Toggle lives here now */}
-            <div style={{display:"flex",background:"#EEEBE6",borderRadius:7,padding:2}}>
+            <div style={{display:"flex",background:isDark?"#303030":"#EEEBE6",borderRadius:7,padding:2}}>
               {["live","settle"].map(mode=>(
                 <button key={mode} onClick={()=>setSettleMode(mode)} style={{
                   padding:"3px 10px",borderRadius:5,border:"none",cursor:"pointer",
                   fontSize:10,fontWeight:600,
-                  background:settleMode===mode?"#FFF":"transparent",
-                  color:settleMode===mode?"#1A1A1A":"#777",
+                  background:settleMode===mode?(isDark?"#4A4A4A":"#FFF"):"transparent",
+                  color:settleMode===mode?theme.text:theme.muted,
                   transition:"all 0.15s",boxShadow:settleMode===mode?"0 1px 2px rgba(0,0,0,0.08)":"none"
                 }}>{mode==="live"?"Live":"Settle"}</button>
               ))}
@@ -767,97 +885,113 @@ export default function TripSplitter(){
           </div>
 
           <div style={{flex:1,overflowY:"auto",padding:"14px 16px"}}>
-            {settleMode==="live"?(
+            {!hasAnyData?(
+              <div style={{background:theme.panelBg,border:`1px dashed ${theme.border}`,borderRadius:8,padding:"12px 12px"}}>
+                <div style={{fontSize:12,fontWeight:700,color:theme.text,marginBottom:4}}>No balances yet</div>
+                <div style={{fontSize:11,color:theme.muted,lineHeight:1.5}}>
+                  Add people, then create expense groups and optional existing debts to see live balances and settlement transfers.
+                </div>
+              </div>
+            ):settleMode==="live"?(
               <>
                 {members.map(m=>{
                   const net=balances.tripNet[m.id];
                   const isPos=net>0.01, isNeg=net<-0.01;
                   return(
-                    <div key={m.id} style={{display:"flex",alignItems:"center",gap:8,marginBottom:6,padding:"9px 11px",borderRadius:8,background:"#FFF",border:"1px solid #E8E4DE"}}>
+                    <div key={m.id} style={{display:"flex",alignItems:"center",gap:8,marginBottom:6,padding:"9px 11px",borderRadius:8,background:theme.panelBg,border:`1px solid ${theme.border}`}}>
                       <Avatar member={m} size={24}/>
                       <div style={{flex:1}}>
-                        <div style={{fontSize:12,fontWeight:600,color:"#222"}}>{m.name.split(" ")[0]}</div>
-                        <div style={{fontSize:10,color:"#888",marginTop:1}}>{isPos?"overpaid":isNeg?"underpaid":"even"}</div>
+                        <div style={{fontSize:12,fontWeight:600,color:theme.text}}>{m.name.split(" ")[0]}</div>
+                        <div style={{fontSize:10,color:theme.muted,marginTop:1}}>{isPos?"overpaid":isNeg?"underpaid":"even"}</div>
                       </div>
-                      <span style={{fontSize:12,fontWeight:700,color:isPos?"#2A7A40":isNeg?"#B83010":"#777"}}>
+                      <span style={{fontSize:12,fontWeight:700,color:isPos?"#2A7A40":isNeg?"#B83010":theme.muted}}>
                         {isPos?"+":isNeg?"-":""}{fmtShort(Math.abs(net))}
                       </span>
                     </div>
                   );
                 })}
-                {/* Pre-trip debt note */}
-                <div style={{marginTop:10,padding:"9px 11px",borderRadius:8,background:"#FFF",border:"1px solid #E8E4DE"}}>
-                  <div style={{fontSize:10,color:"#888",fontWeight:600,marginBottom:3,textTransform:"uppercase",letterSpacing:0.4}}>Pre-trip debt</div>
-                  <div style={{fontSize:12,color:"#444"}}>
-                    <span style={{fontWeight:700,color:members.find(m=>m.id===existingDebts[0]?.from)?.color}}>{members.find(m=>m.id===existingDebts[0]?.from)?.name}</span>
-                    <span style={{color:"#777"}}> owes </span>
-                    <span style={{fontWeight:700,color:members.find(m=>m.id===existingDebts[0]?.to)?.color}}>{members.find(m=>m.id===existingDebts[0]?.to)?.name}</span>
+                {existingDebts.length>0&&(
+                  <div style={{marginTop:10,padding:"9px 11px",borderRadius:8,background:theme.panelBg,border:`1px solid ${theme.border}`}}>
+                    <div style={{fontSize:10,color:theme.muted,fontWeight:600,marginBottom:3,textTransform:"uppercase",letterSpacing:0.4}}>Existing debt (sample)</div>
+                    <div style={{fontSize:12,color:theme.text}}>
+                      <span style={{fontWeight:700,color:members.find(m=>m.id===existingDebts[0]?.from)?.color}}>{members.find(m=>m.id===existingDebts[0]?.from)?.name}</span>
+                      <span style={{color:theme.muted}}> owes </span>
+                      <span style={{fontWeight:700,color:members.find(m=>m.id===existingDebts[0]?.to)?.color}}>{members.find(m=>m.id===existingDebts[0]?.to)?.name}</span>
+                    </div>
+                    <div style={{fontSize:13,fontWeight:700,color:theme.text,marginTop:3}}>{fmt((existingDebts[0]?.amount||0))}</div>
                   </div>
-                  <div style={{fontSize:13,fontWeight:700,color:"#444",marginTop:3}}>{fmt((existingDebts[0]?.amount||0))}</div>
-                </div>
+                )}
               </>
             ):(
               <>
                 {balances.transactions.map((t,i)=>{
                   const f=members.find(m=>m.id===t.from), to=members.find(m=>m.id===t.to);
                   return(
-                    <div key={i} style={{marginBottom:8,padding:"10px 12px",borderRadius:8,background:"#FFF",border:"1px solid #E8E4DE"}}>
+                    <div key={i} style={{marginBottom:8,padding:"10px 12px",borderRadius:8,background:theme.panelBg,border:`1px solid ${theme.border}`}}>
                       <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:6}}>
-                        <span style={{fontSize:10,fontWeight:700,color:"#777",width:16}}>#{i+1}</span>
+                        <span style={{fontSize:10,fontWeight:700,color:theme.muted,width:16}}>#{i+1}</span>
                         <Avatar member={f} size={20}/>
                         <span style={{fontSize:11,color:"#AAA",marginLeft:1}}>→</span>
                         <Avatar member={to} size={20}/>
                         <span style={{fontSize:11,color:"#444",marginLeft:2}}>{f?.name.split(" ")[0]} → {to?.name.split(" ")[0]}</span>
                       </div>
-                      <div style={{fontSize:16,fontWeight:700,color:"#1A1A1A",textAlign:"right"}}>{fmt(t.amount)}</div>
+                      <div style={{fontSize:16,fontWeight:700,color:theme.text,textAlign:"right"}}>{fmt(t.amount)}</div>
                     </div>
                   );
                 })}
-                <div style={{marginTop:4,padding:"9px 11px",borderRadius:8,background:"#FFF",border:"1px solid #E8E4DE"}}>
-                  <div style={{fontSize:11,color:"#666"}}>All {members.length} members settle with <strong>{balances.transactions.length}</strong> transfer{balances.transactions.length!==1?"s":""}</div>
+                <div style={{marginTop:4,padding:"9px 11px",borderRadius:8,background:theme.panelBg,border:`1px solid ${theme.border}`}}>
+                  <div style={{fontSize:11,color:theme.muted}}>All {members.length} members settle with <strong style={{color:theme.text}}>{balances.transactions.length}</strong> transfer{balances.transactions.length!==1?"s":""}</div>
                 </div>
               </>
             )}
           </div>
+        
+
         </div>
 
         {/* COL 3: Trip overview — 25% (swapped) */}
-        <div style={{width:"25%",display:"flex",flexDirection:"column",background:"#F7F5F1"}}>
-          <div style={{padding:"14px 16px 10px",borderBottom:"1px solid #E8E4DE"}}>
-            <div style={{fontFamily:"'Nunito',sans-serif",fontSize:14,fontWeight:800,color:"#1A1A1A"}}>Overview</div>
-            <div style={{fontSize:11,color:"#777",marginTop:1}}>Spend per person</div>
+        <div className="col3" style={{width:"25%",display:"flex",flexDirection:"column",background:theme.softBg}}>
+          <div style={{padding:"14px 16px 10px",borderBottom:`1px solid ${theme.border}`}}>
+            <div style={{fontFamily:"'Nunito',sans-serif",fontSize:14,fontWeight:800,color:theme.text}}>Overview</div>
+            <div style={{fontSize:11,color:theme.muted,marginTop:1}}>Spend per person</div>
           </div>
           <div style={{flex:1,overflowY:"auto",padding:"14px 16px"}}>
+            {!hasAnyData&&(
+              <div style={{marginBottom:12,padding:"12px 14px",borderRadius:8,background:theme.panelBg,border:`1px dashed ${theme.border}`}}>
+                <div style={{fontSize:12,fontWeight:700,color:theme.text,marginBottom:4}}>Overview is empty</div>
+                <div style={{fontSize:11,color:theme.muted,lineHeight:1.5}}>Add your first expense group to populate totals, per-person share, and paid-vs-owed cards here.</div>
+              </div>
+            )}
 
             {/* Grand total — subtle, readable */}
-            <div style={{marginBottom:18,padding:"12px 14px",borderRadius:8,background:"#F2E8DA",border:"1px solid #DDCFBA"}}>
-              <div style={{fontSize:10,color:"#888",fontWeight:600,textTransform:"uppercase",letterSpacing:0.5,marginBottom:6}}>Grand total</div>
+            <div style={{marginBottom:18,padding:"12px 14px",borderRadius:8,background:theme.accentBg,border:`1px solid ${theme.accentBorder}`}}>
+              <div style={{fontSize:10,color:theme.muted,fontWeight:600,textTransform:"uppercase",letterSpacing:0.5,marginBottom:6}}>Grand total</div>
               <div style={{display:"flex",alignItems:"baseline",gap:6}}>
-                <span style={{fontFamily:"'Nunito',sans-serif",fontSize:22,fontWeight:800,color:"#1A1A1A",lineHeight:1}}>{fmt(grandTotal)}</span>
+                <span style={{fontFamily:"'Nunito',sans-serif",fontSize:22,fontWeight:800,color:theme.text,lineHeight:1}}>{fmt(grandTotal)}</span>
               </div>
-              <div style={{fontSize:11,color:"#888",marginTop:4}}>{groups.length} expense groups · {members.length} people</div>
+              <div style={{fontSize:11,color:theme.muted,marginTop:4}}>{groups.length} expense groups · {members.length} people</div>
             </div>
 
             {/* Share bars */}
             <div style={{marginBottom:18}}>
-              <div style={{fontSize:10,fontWeight:600,color:"#888",letterSpacing:0.5,marginBottom:10,textTransform:"uppercase"}}>Each person's share</div>
-              {members.map(m=><MemberBar key={m.id} member={m} value={balances.owed[m.id]} max={maxSpend}/>)}
+              <div style={{fontSize:10,fontWeight:600,color:theme.muted,letterSpacing:0.5,marginBottom:10,textTransform:"uppercase"}}>Each person's share</div>
+              {members.map(m=><MemberBar key={m.id} member={m} value={balances.owed[m.id]} max={maxSpend} textColor={theme.text} valueColor={theme.text} trackColor={isDark?"#3A3A3A":"#F0EDE8"}/>) }
             </div>
 
             {/* Paid vs owed rows */}
             <div>
-              <div style={{fontSize:10,fontWeight:600,color:"#888",letterSpacing:0.5,marginBottom:8,textTransform:"uppercase"}}>Paid vs owed</div>
+              <div style={{fontSize:10,fontWeight:600,color:theme.muted,letterSpacing:0.5,marginBottom:8,textTransform:"uppercase"}}>Paid vs owed</div>
               {members.map(m=>{
                 const paid=balances.paid[m.id], owed=balances.owed[m.id], net=paid-owed;
                 const isPos=net>0.01, isNeg=net<-0.01;
                 return(
-                  <div key={m.id} style={{display:"flex",alignItems:"center",gap:8,marginBottom:6,padding:"8px 10px",borderRadius:8,background:"#FFF",border:"1px solid #E8E4DE"}}>
+                  <div key={m.id} style={{display:"flex",alignItems:"center",gap:8,marginBottom:6,padding:"8px 10px",borderRadius:8,background:theme.panelBg,border:`1px solid ${theme.border}`}}>
                     <Avatar member={m} size={24}/>
                     <div style={{flex:1}}>
-                      <div style={{fontSize:11,fontWeight:600,color:"#222"}}>{m.name.split(" ")[0]}</div>
-                      <div style={{fontSize:10,color:"#888"}}>paid {fmtShort(paid)}</div>
+                      <div style={{fontSize:11,fontWeight:600,color:theme.text}}>{m.name.split(" ")[0]}</div>
+                      <div style={{fontSize:10,color:theme.muted}}>paid {fmtShort(paid)}</div>
                     </div>
-                    <span style={{fontSize:12,fontWeight:700,color:isPos?"#2A7A40":isNeg?"#B83010":"#777"}}>
+                    <span style={{fontSize:12,fontWeight:700,color:isPos?"#2A7A40":isNeg?"#B83010":theme.muted}}>
                       {isPos?"+":isNeg?"-":""}{fmtShort(Math.abs(net))}
                     </span>
                   </div>
@@ -872,9 +1006,26 @@ export default function TripSplitter(){
       {showAdd&&<AddGroupModal members={members} onAdd={addGroup} onClose={()=>setShowAdd(false)}/>}
       {showSettings&&<TripSettingsModal tripName={tripName} members={members} onSave={saveSettings} onClose={()=>setShowSettings(false)}/>}
       {showExistingDebts&&<ExistingDebtsModal members={members} debts={existingDebts} onSave={setExistingDebts} onClose={()=>setShowExistingDebts(false)}/>}
+      {showReset&&<ResetDataModal onClose={()=>setShowReset(false)} onConfirm={resetAllData}/>}
     </div>
   );
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
