@@ -20,7 +20,7 @@ const INITIAL_GROUPS = [
   { id:"g7", label:"Karthikeyan Cash",        emoji:"💰",  paidBy:"K", total:39231,    note:"Karthikeyan's cash spend, split equally",          shares:{K:9807.75,J:9807.75,S:9807.75,Y:9807.75} },
 ];
 
-const PRE_TRIP_DEBT = { from:"J", to:"K", amount:40000 };
+const INITIAL_EXISTING_DEBTS = [{ id:"d1", from:"J", to:"K", amount:40000 }];
 
 // ─── HELPERS ─────────────────────────────────────────────────────────────────
 const fmt      = n => "₹" + Math.abs(n).toLocaleString("en-IN", { minimumFractionDigits:2, maximumFractionDigits:2 });
@@ -31,7 +31,7 @@ function makeInitials(name) {
   return w.length >= 2 ? (w[0][0]+w[1][0]).toUpperCase() : name.slice(0,2).toUpperCase();
 }
 
-function computeBalances(members, groups, preTrip) {
+function computeBalances(members, groups, existingDebts=[]) {
   const paid={}, owed={};
   members.forEach(m => { paid[m.id]=0; owed[m.id]=0; });
   groups.forEach(g => {
@@ -41,8 +41,11 @@ function computeBalances(members, groups, preTrip) {
   const tripNet={};
   members.forEach(m => { tripNet[m.id] = paid[m.id]-owed[m.id]; });
   const finalNet={...tripNet};
-  if (finalNet[preTrip.to]   !== undefined) finalNet[preTrip.to]   += preTrip.amount;
-  if (finalNet[preTrip.from] !== undefined) finalNet[preTrip.from] -= preTrip.amount;
+  existingDebts.forEach(d => {
+    if (!d || d.from===d.to || !d.amount || d.amount<=0) return;
+    if (finalNet[d.to]   !== undefined) finalNet[d.to]   += d.amount;
+    if (finalNet[d.from] !== undefined) finalNet[d.from] -= d.amount;
+  });
 
   const transactions=[];
   const debtors  = members.filter(m=>finalNet[m.id]<-0.01).map(m=>({id:m.id,amt:-finalNet[m.id]})).sort((a,b)=>b.amt-a.amt);
@@ -106,16 +109,16 @@ function GroupCard({group,members,onUpdate,onDelete}){
         <span style={{fontSize:18}}>{group.emoji}</span>
         <div style={{flex:1}}>
           <div style={{fontSize:13,fontWeight:700,color:"#1A1A1A"}}>{group.label}</div>
-          <div style={{fontSize:11,color:"#888",marginTop:1}}>
+          <div style={{fontSize:11,color:"#666",marginTop:1}}>
             Paid by <span style={{color:payer?.color,fontWeight:600}}>{payer?.name}</span>
-            {group.note&&<span style={{color:"#BBB"}}> · {group.note}</span>}
+            {group.note&&<span style={{color:"#999"}}> · {group.note}</span>}
           </div>
         </div>
         <div style={{textAlign:"right"}}>
           <div style={{fontSize:14,fontWeight:800,color:"#1A1A1A"}}>{fmt(group.total)}</div>
           {diff>0.5&&<div style={{fontSize:10,color:"#E07020",fontWeight:600}}>⚠ Δ {fmt(diff)}</div>}
         </div>
-        <span style={{fontSize:14,color:"#AAA",marginLeft:4,transition:"transform 0.2s",transform:expanded?"rotate(180deg)":"rotate(0deg)"}}>▾</span>
+        <span style={{fontSize:14,color:"#888",marginLeft:4,transition:"transform 0.2s",transform:expanded?"rotate(180deg)":"rotate(0deg)"}}>▾</span>
       </div>
 
       {expanded&&!editing&&(
@@ -125,14 +128,14 @@ function GroupCard({group,members,onUpdate,onDelete}){
               <div key={m.id} style={{display:"flex",alignItems:"center",gap:10,marginBottom:6,padding:"6px 10px",borderRadius:7,background:(group.shares[m.id]||0)>0?m.color+"0D":"#F9F6F1",border:`1px solid ${(group.shares[m.id]||0)>0?m.color+"25":"#EDE8E0"}`}}>
                 <Avatar member={m} size={22}/>
                 <span style={{flex:1,fontSize:12,fontWeight:600,color:"#333"}}>{m.name}</span>
-                <span style={{fontSize:13,fontWeight:700,color:(group.shares[m.id]||0)>0?m.color:"#CCC"}}>
+                <span style={{fontSize:13,fontWeight:700,color:(group.shares[m.id]||0)>0?m.color:"#AAA"}}>
                   {(group.shares[m.id]||0)>0?fmt(group.shares[m.id]):"—"}
                 </span>
               </div>
             ))}
           </div>
           <div style={{display:"flex",gap:8}}>
-            <button onClick={startEdit} style={{flex:1,padding:"6px 12px",borderRadius:6,border:"1px solid #DDD",background:"#FFF",fontSize:12,fontWeight:600,color:"#555",cursor:"pointer"}}>Edit</button>
+            <button onClick={startEdit} style={{flex:1,padding:"6px 12px",borderRadius:6,border:"1px solid #BBB",background:"#FFF",fontSize:12,fontWeight:600,color:"#444",cursor:"pointer"}}>Edit</button>
             <button onClick={()=>onDelete(group.id)} style={{padding:"6px 12px",borderRadius:6,border:"1px solid #FCC",background:"#FFF8F8",fontSize:12,fontWeight:600,color:"#C44",cursor:"pointer"}}>Delete</button>
           </div>
         </div>
@@ -142,34 +145,34 @@ function GroupCard({group,members,onUpdate,onDelete}){
         <div style={{borderTop:"1px solid #E8E4DE",padding:"12px 14px 14px",background:"#FAFAFA"}}>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}}>
             <div>
-              <label style={{fontSize:10,color:"#888",fontWeight:600,display:"block",marginBottom:3}}>LABEL</label>
-              <input value={draft.label} onChange={e=>setDraft({...draft,label:e.target.value})} style={{width:"100%",padding:"6px 8px",borderRadius:6,border:"1px solid #DDD",fontSize:12,boxSizing:"border-box"}}/>
+              <label style={{fontSize:10,color:"#666",fontWeight:600,display:"block",marginBottom:3}}>LABEL</label>
+              <input value={draft.label} onChange={e=>setDraft({...draft,label:e.target.value})} style={{width:"100%",padding:"6px 8px",borderRadius:6,border:"1px solid #BBB",fontSize:12,boxSizing:"border-box"}}/>
             </div>
             <div>
-              <label style={{fontSize:10,color:"#888",fontWeight:600,display:"block",marginBottom:3}}>TOTAL (₹)</label>
-              <input type="number" value={draft.total} onChange={e=>setDraft({...draft,total:parseFloat(e.target.value)||0})} style={{width:"100%",padding:"6px 8px",borderRadius:6,border:"1px solid #DDD",fontSize:12,boxSizing:"border-box"}}/>
+              <label style={{fontSize:10,color:"#666",fontWeight:600,display:"block",marginBottom:3}}>TOTAL (₹)</label>
+              <input type="number" value={draft.total} onChange={e=>setDraft({...draft,total:parseFloat(e.target.value)||0})} style={{width:"100%",padding:"6px 8px",borderRadius:6,border:"1px solid #BBB",fontSize:12,boxSizing:"border-box"}}/>
             </div>
             <div>
-              <label style={{fontSize:10,color:"#888",fontWeight:600,display:"block",marginBottom:3}}>PAID BY</label>
-              <select value={draft.paidBy} onChange={e=>setDraft({...draft,paidBy:e.target.value})} style={{width:"100%",padding:"6px 8px",borderRadius:6,border:"1px solid #DDD",fontSize:12,boxSizing:"border-box"}}>
+              <label style={{fontSize:10,color:"#666",fontWeight:600,display:"block",marginBottom:3}}>PAID BY</label>
+              <select value={draft.paidBy} onChange={e=>setDraft({...draft,paidBy:e.target.value})} style={{width:"100%",padding:"6px 8px",borderRadius:6,border:"1px solid #BBB",fontSize:12,boxSizing:"border-box"}}>
                 {members.map(m=><option key={m.id} value={m.id}>{m.name}</option>)}
               </select>
             </div>
             <div>
-              <label style={{fontSize:10,color:"#888",fontWeight:600,display:"block",marginBottom:3}}>NOTE</label>
-              <input value={draft.note} onChange={e=>setDraft({...draft,note:e.target.value})} style={{width:"100%",padding:"6px 8px",borderRadius:6,border:"1px solid #DDD",fontSize:12,boxSizing:"border-box"}}/>
+              <label style={{fontSize:10,color:"#666",fontWeight:600,display:"block",marginBottom:3}}>NOTE</label>
+              <input value={draft.note} onChange={e=>setDraft({...draft,note:e.target.value})} style={{width:"100%",padding:"6px 8px",borderRadius:6,border:"1px solid #BBB",fontSize:12,boxSizing:"border-box"}}/>
             </div>
           </div>
           <div style={{marginBottom:8}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
-              <label style={{fontSize:10,color:"#888",fontWeight:600}}>SHARES (₹)</label>
-              <button onClick={()=>setDraft(splitEqual(draft))} style={{fontSize:10,padding:"3px 8px",borderRadius:5,border:"1px solid #DDD",background:"#FFF",cursor:"pointer",color:"#555",fontWeight:600}}>Split equally</button>
+              <label style={{fontSize:10,color:"#666",fontWeight:600}}>SHARES (₹)</label>
+              <button onClick={()=>setDraft(splitEqual(draft))} style={{fontSize:10,padding:"3px 8px",borderRadius:5,border:"1px solid #BBB",background:"#FFF",cursor:"pointer",color:"#444",fontWeight:600}}>Split equally</button>
             </div>
             {members.map(m=>(
               <div key={m.id} style={{display:"flex",alignItems:"center",gap:10,marginBottom:6,padding:"6px 10px",borderRadius:7,background:"#F9F6F1",border:"1px solid #EDE8E0"}}>
                 <Avatar member={m} size={22}/>
                 <span style={{fontSize:12,fontWeight:600,color:"#333",flex:1}}>{m.name}</span>
-                <input type="number" value={draft.shares[m.id]??0} onChange={e=>setDraft({...draft,shares:{...draft.shares,[m.id]:parseFloat(e.target.value)||0}})} style={{width:90,padding:"4px 8px",borderRadius:5,border:"1px solid #DDD",fontSize:12,textAlign:"right"}}/>
+                <input type="number" value={draft.shares[m.id]??0} onChange={e=>setDraft({...draft,shares:{...draft.shares,[m.id]:parseFloat(e.target.value)||0}})} style={{width:90,padding:"4px 8px",borderRadius:5,border:"1px solid #BBB",fontSize:12,textAlign:"right"}}/>
               </div>
             ))}
             {Math.abs(draft.total-Object.values(draft.shares).reduce((a,b)=>a+b,0))>0.5&&(
@@ -178,7 +181,7 @@ function GroupCard({group,members,onUpdate,onDelete}){
           </div>
           <div style={{display:"flex",gap:8}}>
             <button onClick={saveEdit} style={{flex:1,padding:"7px 12px",borderRadius:6,border:"none",background:"#2C2C2C",color:"#FFF",fontSize:12,fontWeight:700,cursor:"pointer"}}>Save changes</button>
-            <button onClick={cancelEdit} style={{padding:"7px 12px",borderRadius:6,border:"1px solid #DDD",background:"#FFF",fontSize:12,fontWeight:600,color:"#888",cursor:"pointer"}}>Cancel</button>
+            <button onClick={cancelEdit} style={{padding:"7px 12px",borderRadius:6,border:"1px solid #BBB",background:"#FFF",fontSize:12,fontWeight:600,color:"#666",cursor:"pointer"}}>Cancel</button>
           </div>
         </div>
       )}
@@ -249,8 +252,8 @@ function AddGroupModal({members,onAdd,onClose}){
     {id:"custom", label:"Custom per person",   desc:"Enter each person's share manually"},
   ];
 
-  const inputStyle={padding:"6px 8px",borderRadius:6,border:"1px solid #DDD",fontSize:12,boxSizing:"border-box",width:"100%"};
-  const labelStyle={fontSize:10,color:"#888",fontWeight:600,display:"block",marginBottom:3,letterSpacing:0.3,textTransform:"uppercase"};
+  const inputStyle={padding:"6px 8px",borderRadius:6,border:"1px solid #BBB",fontSize:12,boxSizing:"border-box",width:"100%"};
+  const labelStyle={fontSize:10,color:"#666",fontWeight:600,display:"block",marginBottom:3,letterSpacing:0.3,textTransform:"uppercase"};
 
   return(
     <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.45)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
@@ -259,7 +262,7 @@ function AddGroupModal({members,onAdd,onClose}){
         {/* Header */}
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18}}>
           <h3 style={{margin:0,fontSize:15,fontWeight:800,fontFamily:"'Nunito',sans-serif"}}>Add Expense Group</h3>
-          <button onClick={onClose} style={{border:"none",background:"none",fontSize:18,cursor:"pointer",color:"#999",lineHeight:1}}>✕</button>
+          <button onClick={onClose} style={{border:"none",background:"none",fontSize:18,cursor:"pointer",color:"#777",lineHeight:1}}>✕</button>
         </div>
 
         {/* Icon + Label */}
@@ -307,14 +310,14 @@ function AddGroupModal({members,onAdd,onClose}){
                 style={{display:"flex",alignItems:"flex-start",gap:10,padding:"9px 12px",borderRadius:8,cursor:"pointer",
                   background:form.splitMode===mode.id?"#F0F6FF":"#F9F6F1",
                   border:`1.5px solid ${form.splitMode===mode.id?"#3C7DC1":"#E8E4DE"}`}}>
-                <div style={{width:16,height:16,borderRadius:"50%",border:`2px solid ${form.splitMode===mode.id?"#3C7DC1":"#CCC"}`,
+                <div style={{width:16,height:16,borderRadius:"50%",border:`2px solid ${form.splitMode===mode.id?"#3C7DC1":"#AAA"}`,
                   background:form.splitMode===mode.id?"#3C7DC1":"transparent",
                   display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,marginTop:1}}>
                   {form.splitMode===mode.id&&<div style={{width:6,height:6,borderRadius:"50%",background:"#FFF"}}/>}
                 </div>
                 <div>
                   <div style={{fontSize:12,fontWeight:700,color:"#1A1A1A"}}>{mode.label}</div>
-                  <div style={{fontSize:11,color:"#888",marginTop:1}}>{mode.desc}</div>
+                  <div style={{fontSize:11,color:"#666",marginTop:1}}>{mode.desc}</div>
                 </div>
               </label>
             ))}
@@ -372,7 +375,7 @@ function AddGroupModal({members,onAdd,onClose}){
                   <div style={{flex:1}}>
                     <div style={{fontSize:12,fontWeight:600,color:"#222"}}>{m.name}</div>
                     {sharedAmt>0&&(
-                      <div style={{fontSize:10,color:"#AAA"}}>
+                      <div style={{fontSize:10,color:"#888"}}>
                         shared {fmt(sharedAmt/members.length)}
                         {(form.personal[m.id]||0)>0&&<span style={{color:"#C17D3C"}}> + personal {fmt(form.personal[m.id])}</span>}
                       </div>
@@ -381,7 +384,7 @@ function AddGroupModal({members,onAdd,onClose}){
                   <input type="number" placeholder="0"
                     value={form.personal[m.id]||""}
                     onChange={e=>setForm(f=>({...f,personal:{...f.personal,[m.id]:parseFloat(e.target.value)||0}}))}
-                    style={{width:90,padding:"5px 8px",borderRadius:6,border:"1px solid #DDD",fontSize:13,textAlign:"right",fontWeight:600}}/>
+                    style={{width:90,padding:"5px 8px",borderRadius:6,border:"1px solid #BBB",fontSize:13,textAlign:"right",fontWeight:600}}/>
                 </div>
               ))}
               {/* Personal slack check */}
@@ -398,7 +401,7 @@ function AddGroupModal({members,onAdd,onClose}){
             {/* Final shares preview */}
             {total>0&&sharedAmt>0&&(
               <div style={{marginTop:8,padding:"10px 12px",background:"#F5F3F0",borderRadius:8,border:"1px solid #E8E4DE"}}>
-                <div style={{fontSize:10,color:"#888",fontWeight:700,textTransform:"uppercase",letterSpacing:0.5,marginBottom:6}}>Final total per person</div>
+                <div style={{fontSize:10,color:"#666",fontWeight:700,textTransform:"uppercase",letterSpacing:0.5,marginBottom:6}}>Final total per person</div>
                 {members.map(m=>(
                   <div key={m.id} style={{display:"flex",alignItems:"center",gap:8,marginBottom:4}}>
                     <Avatar member={m} size={20}/>
@@ -417,7 +420,7 @@ function AddGroupModal({members,onAdd,onClose}){
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
               <label style={labelStyle}>Amount per person</label>
               <button onClick={()=>setForm(f=>({...f,personal:Object.fromEntries(members.map(m=>[m.id,+(total/members.length).toFixed(2)]))}))}
-                style={{fontSize:10,padding:"3px 10px",borderRadius:5,border:"1px solid #DDD",background:"#F9F6F1",cursor:"pointer",fontWeight:600,color:"#555"}}>
+                style={{fontSize:10,padding:"3px 10px",borderRadius:5,border:"1px solid #BBB",background:"#F9F6F1",cursor:"pointer",fontWeight:600,color:"#444"}}>
                 Split equally
               </button>
             </div>
@@ -428,7 +431,7 @@ function AddGroupModal({members,onAdd,onClose}){
                 <input type="number" placeholder="0"
                   value={form.personal[m.id]||""}
                   onChange={e=>setForm(f=>({...f,personal:{...f.personal,[m.id]:parseFloat(e.target.value)||0}}))}
-                  style={{width:100,padding:"5px 8px",borderRadius:6,border:"1px solid #DDD",fontSize:13,textAlign:"right",fontWeight:600}}/>
+                  style={{width:100,padding:"5px 8px",borderRadius:6,border:"1px solid #BBB",fontSize:13,textAlign:"right",fontWeight:600}}/>
               </div>
             ))}
             {total>0&&!balanced&&(
@@ -443,7 +446,7 @@ function AddGroupModal({members,onAdd,onClose}){
         )}
 
         <button onClick={submit} style={{width:"100%",padding:"10px",borderRadius:8,border:"none",
-          background:form.label&&form.total?"#2C2C2C":"#CCC",color:"#FFF",fontSize:13,fontWeight:700,cursor:"pointer"}}>
+          background:form.label&&form.total?"#2C2C2C":"#AAA",color:"#FFF",fontSize:13,fontWeight:700,cursor:"pointer"}}>
           Add Group
         </button>
       </div>
@@ -475,22 +478,22 @@ function TripSettingsModal({tripName,members,onSave,onClose}){
       <div style={{background:"#FFF",borderRadius:14,padding:24,width:400,maxHeight:"85vh",overflowY:"auto",boxShadow:"0 20px 60px rgba(0,0,0,0.2)"}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
           <h3 style={{margin:0,fontSize:15,fontWeight:800,fontFamily:"'Nunito',sans-serif"}}>Trip Settings</h3>
-          <button onClick={onClose} style={{border:"none",background:"none",fontSize:18,cursor:"pointer",color:"#999"}}>✕</button>
+          <button onClick={onClose} style={{border:"none",background:"none",fontSize:18,cursor:"pointer",color:"#777"}}>✕</button>
         </div>
 
         {/* Trip name */}
         <div style={{marginBottom:22}}>
-          <label style={{fontSize:10,color:"#888",fontWeight:700,display:"block",marginBottom:5,letterSpacing:0.5,textTransform:"uppercase"}}>Trip Name</label>
+          <label style={{fontSize:10,color:"#666",fontWeight:700,display:"block",marginBottom:5,letterSpacing:0.5,textTransform:"uppercase"}}>Trip Name</label>
           <input
             value={name} onChange={e=>setName(e.target.value)}
             placeholder="e.g. Thailand 2025"
-            style={{width:"100%",padding:"9px 12px",borderRadius:8,border:"1px solid #DDD",fontSize:14,fontWeight:600,boxSizing:"border-box",fontFamily:"'Nunito',sans-serif"}}
+            style={{width:"100%",padding:"9px 12px",borderRadius:8,border:"1px solid #BBB",fontSize:14,fontWeight:600,boxSizing:"border-box",fontFamily:"'Nunito',sans-serif"}}
           />
         </div>
 
         {/* People */}
         <div style={{marginBottom:20}}>
-          <label style={{fontSize:10,color:"#888",fontWeight:700,display:"block",marginBottom:8,letterSpacing:0.5,textTransform:"uppercase"}}>People on the trip ({people.length})</label>
+          <label style={{fontSize:10,color:"#666",fontWeight:700,display:"block",marginBottom:8,letterSpacing:0.5,textTransform:"uppercase"}}>People on the trip ({people.length})</label>
           {people.map(m=>(
             <div key={m.id} style={{display:"flex",alignItems:"center",gap:10,marginBottom:8,padding:"8px 10px",borderRadius:8,background:"#F9F6F1",border:"1px solid #EDE8E0"}}>
               <Avatar member={m} size={30}/>
@@ -509,7 +512,7 @@ function TripSettingsModal({tripName,members,onSave,onClose}){
             <input
               value={newName} onChange={e=>setNewName(e.target.value)} onKeyDown={handleKey}
               placeholder="Add a person..."
-              style={{flex:1,padding:"8px 10px",borderRadius:8,border:"1px dashed #CCC",fontSize:12,boxSizing:"border-box",background:"#FAFAFA"}}
+              style={{flex:1,padding:"8px 10px",borderRadius:8,border:"1px dashed #AAA",fontSize:12,boxSizing:"border-box",background:"#FAFAFA"}}
             />
             <button onClick={addPerson} style={{padding:"8px 14px",borderRadius:8,border:"none",background:"#2C2C2C",color:"#FFF",fontSize:12,fontWeight:700,cursor:"pointer",flexShrink:0}}>
               + Add
@@ -526,23 +529,107 @@ function TripSettingsModal({tripName,members,onSave,onClose}){
 }
 
 // ─── MAIN APP ─────────────────────────────────────────────────────────────────
+function ExistingDebtsModal({members,debts,onSave,onClose}){
+  const [rows,setRows]=useState(
+    debts.length
+      ? debts.map(d=>({id:d.id||("d"+Date.now()+Math.random()),from:d.from,to:d.to,amount:d.amount}))
+      : [{id:"d"+Date.now(),from:members[0]?.id||"",to:members[1]?.id||members[0]?.id||"",amount:0}]
+  );
+
+  function addRow(){
+    setRows(r=>[...r,{
+      id:"d"+Date.now()+Math.random(),
+      from:members[0]?.id||"",
+      to:members[1]?.id||members[0]?.id||"",
+      amount:0
+    }]);
+  }
+  function updateRow(id,patch){
+    setRows(r=>r.map(row=>row.id===id?{...row,...patch}:row));
+  }
+  function removeRow(id){
+    setRows(r=>r.filter(row=>row.id!==id));
+  }
+  function save(){
+    const cleaned = rows
+      .map(r=>({...r,amount:parseFloat(r.amount)||0}))
+      .filter(r=>r.from && r.to && r.from!==r.to && r.amount>0.01);
+    onSave(cleaned);
+    onClose();
+  }
+
+  const total = rows.reduce((s,r)=>s+(parseFloat(r.amount)||0),0);
+
+  return(
+    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.45)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
+      <div style={{background:"#FFF",borderRadius:14,padding:24,width:520,maxHeight:"85vh",overflowY:"auto",boxShadow:"0 20px 60px rgba(0,0,0,0.2)"}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+          <h3 style={{margin:0,fontSize:15,fontWeight:800,fontFamily:"'Nunito',sans-serif"}}>Existing Debts</h3>
+          <button onClick={onClose} style={{border:"none",background:"none",fontSize:18,cursor:"pointer",color:"#777"}}>✕</button>
+        </div>
+        <div style={{fontSize:11,color:"#666",marginBottom:10}}>
+          Add debts like "A owes B". These will be included in final settlement.
+        </div>
+
+        {rows.map((row,idx)=>(
+          <div key={row.id} style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr auto",gap:8,alignItems:"end",marginBottom:8,padding:"10px 10px",borderRadius:8,background:"#F9F6F1",border:"1px solid #E8E4DE"}}>
+            <div>
+              <label style={{fontSize:10,color:"#666",fontWeight:600,display:"block",marginBottom:3}}>From</label>
+              <select value={row.from} onChange={e=>updateRow(row.id,{from:e.target.value})} style={{width:"100%",padding:"6px 8px",borderRadius:6,border:"1px solid #BBB",fontSize:12,boxSizing:"border-box"}}>
+                {members.map(m=><option key={m.id} value={m.id}>{m.name}</option>)}
+              </select>
+            </div>
+            <div>
+              <label style={{fontSize:10,color:"#666",fontWeight:600,display:"block",marginBottom:3}}>To</label>
+              <select value={row.to} onChange={e=>updateRow(row.id,{to:e.target.value})} style={{width:"100%",padding:"6px 8px",borderRadius:6,border:"1px solid #BBB",fontSize:12,boxSizing:"border-box"}}>
+                {members.map(m=><option key={m.id} value={m.id}>{m.name}</option>)}
+              </select>
+            </div>
+            <div>
+              <label style={{fontSize:10,color:"#666",fontWeight:600,display:"block",marginBottom:3}}>Amount (₹)</label>
+              <input type="number" value={row.amount} onChange={e=>updateRow(row.id,{amount:e.target.value})} style={{width:"100%",padding:"6px 8px",borderRadius:6,border:"1px solid #BBB",fontSize:12,boxSizing:"border-box"}}/>
+            </div>
+            <button onClick={()=>removeRow(row.id)} title={`Remove debt ${idx+1}`} style={{width:26,height:26,border:"none",borderRadius:"50%",background:"#FEE",color:"#C44",cursor:"pointer",fontSize:14,lineHeight:1,padding:0}}>×</button>
+          </div>
+        ))}
+
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:2,marginBottom:14}}>
+          <button onClick={addRow} style={{padding:"6px 12px",borderRadius:7,border:"1px solid #E8E4DE",background:"#FFF",color:"#333",fontSize:12,fontWeight:600,cursor:"pointer"}}>+ Add debt</button>
+          <div style={{fontSize:12,color:"#444",fontWeight:700}}>Total debt: {fmt(total)}</div>
+        </div>
+
+        <button onClick={save} style={{width:"100%",padding:"10px",borderRadius:8,border:"none",background:"#2C2C2C",color:"#FFF",fontSize:13,fontWeight:700,cursor:"pointer"}}>
+          Save Existing Debts
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function TripSplitter(){
   const [tripName,setTripName]         = useState("Thailand 2025");
   const [members,setMembers]           = useState(INITIAL_MEMBERS);
   const [groups,setGroups]             = useState(INITIAL_GROUPS);
-  const [preTrip]                      = useState(PRE_TRIP_DEBT);
+  const [existingDebts,setExistingDebts] = useState(INITIAL_EXISTING_DEBTS);
   const [settleMode,setSettleMode]     = useState("live");
   const [showAdd,setShowAdd]           = useState(false);
   const [showSettings,setShowSettings] = useState(false);
+  const [showExistingDebts,setShowExistingDebts] = useState(false);
 
-  const balances   = computeBalances(members,groups,preTrip);
+  const balances   = computeBalances(members,groups,existingDebts);
   const grandTotal = groups.reduce((s,g)=>s+g.total,0);
   const maxSpend   = Math.max(...members.map(m=>balances.owed[m.id]),1);
 
   function updateGroup(u){ setGroups(gs=>gs.map(g=>g.id===u.id?u:g)); }
   function deleteGroup(id){ setGroups(gs=>gs.filter(g=>g.id!==id)); }
   function addGroup(g){ setGroups(gs=>[...gs,g]); }
-  function saveSettings(name,people){ setTripName(name); setMembers(people); setShowSettings(false); }
+  function saveSettings(name,people){
+    setTripName(name);
+    setMembers(people);
+    const validIds = new Set(people.map(p=>p.id));
+    setExistingDebts(ds=>ds.filter(d=>validIds.has(d.from) && validIds.has(d.to) && d.from!==d.to && d.amount>0));
+    setShowSettings(false);
+  }
 
   function handlePrint(){
     const style=`<style>
@@ -550,11 +637,11 @@ export default function TripSplitter(){
       *{box-sizing:border-box;margin:0;padding:0}
       body{font-family:'Inter',sans-serif;background:#FFFCF8;color:#1A1A1A;padding:32px;font-size:13px}
       h1{font-family:'Nunito',sans-serif;font-size:26px;margin-bottom:4px}
-      .sub{font-size:12px;color:#888;margin-bottom:28px}
+      .sub{font-size:12px;color:#666;margin-bottom:28px}
       table{width:100%;border-collapse:collapse;margin-bottom:24px}
       th{background:#2C2C2C;color:#FFF;padding:8px 12px;font-size:11px;text-align:left}
       td{padding:8px 12px;border-bottom:1px solid #EDE8E0}
-      .sec{font-size:10px;font-weight:700;letter-spacing:1px;color:#888;text-transform:uppercase;margin:20px 0 8px}
+      .sec{font-size:10px;font-weight:700;letter-spacing:1px;color:#666;text-transform:uppercase;margin:20px 0 8px}
       .tot td{font-weight:700;background:#F5F2EC}
       .txn{display:flex;justify-content:space-between;padding:8px 12px;background:#F9F6F0;border-radius:6px;margin-bottom:6px}
     </style>`;
@@ -597,7 +684,7 @@ export default function TripSplitter(){
           {/* Trip name chip */}
           <button onClick={()=>setShowSettings(true)} style={{display:"flex",alignItems:"center",gap:5,background:"#F7F5F1",border:"1px solid #E8E4DE",borderRadius:7,padding:"3px 10px",cursor:"pointer"}}>
             <span style={{fontSize:12,fontWeight:600,color:"#444"}}>{tripName}</span>
-            <span style={{fontSize:10,color:"#BBB"}}>✎</span>
+            <span style={{fontSize:10,color:"#999"}}>✎</span>
           </button>
 
           {/* Member avatar strip */}
@@ -608,14 +695,14 @@ export default function TripSplitter(){
               </div>
             ))}
             <button onClick={()=>setShowSettings(true)} title="Add / manage people"
-              style={{marginLeft:4,width:24,height:24,borderRadius:"50%",border:"1.5px dashed #CCC",background:"transparent",color:"#BBB",fontSize:14,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:0,lineHeight:1}}>
+              style={{marginLeft:4,width:24,height:24,borderRadius:"50%",border:"1.5px dashed #AAA",background:"transparent",color:"#999",fontSize:14,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:0,lineHeight:1}}>
               +
             </button>
           </div>
         </div>
 
         {/* Right: export only */}
-        <button onClick={handlePrint} style={{padding:"5px 12px",borderRadius:6,border:"1px solid #E8E4DE",background:"#F7F5F1",color:"#555",fontSize:11,fontWeight:600,cursor:"pointer"}}>
+        <button onClick={handlePrint} style={{padding:"5px 12px",borderRadius:6,border:"1px solid #E8E4DE",background:"#F7F5F1",color:"#444",fontSize:11,fontWeight:600,cursor:"pointer"}}>
           Export PDF
         </button>
       </div>
@@ -624,15 +711,20 @@ export default function TripSplitter(){
       <div style={{display:"flex",height:"calc(100vh - 54px)",overflow:"hidden"}}>
 
         {/* COL 1: Groups — 50% */}
-        <div style={{width:"50%",borderRight:"1px solid #E8E4DE",display:"flex",flexDirection:"column",background:"#F7F5F1"}}>
+        <div style={{width:"50%",borderRight:"1px solid #E8E4DE",display:"flex",flexDirection:"column",background:"#FFF"}}>
           <div style={{padding:"14px 16px 10px",borderBottom:"1px solid #E8E4DE",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
             <div>
               <div style={{fontFamily:"'Nunito',sans-serif",fontSize:14,fontWeight:800,color:"#1A1A1A"}}>Expense Groups</div>
-              <div style={{fontSize:11,color:"#999",marginTop:1}}>{groups.length} groups · click to expand & edit inline</div>
+              <div style={{fontSize:11,color:"#777",marginTop:1}}>{groups.length} groups · click to expand & edit inline</div>
             </div>
-            <button onClick={()=>setShowAdd(true)} style={{padding:"5px 12px",borderRadius:7,border:"1px solid #E8E4DE",background:"#FFF",color:"#333",fontSize:12,fontWeight:600,cursor:"pointer"}}>
-              + Add group
-            </button>
+            <div style={{display:"flex",gap:8}}>
+              <button onClick={()=>setShowExistingDebts(true)} style={{padding:"5px 12px",borderRadius:7,border:"1px solid #E8E4DE",background:"#FFF",color:"#333",fontSize:12,fontWeight:600,cursor:"pointer"}}>
+                Existing Debts
+              </button>
+              <button onClick={()=>setShowAdd(true)} style={{padding:"5px 12px",borderRadius:7,border:"1px solid #E8E4DE",background:"#FFF",color:"#333",fontSize:12,fontWeight:600,cursor:"pointer"}}>
+                + Add group
+              </button>
+            </div>
           </div>
           <div style={{flex:1,overflowY:"auto",padding:"10px 12px"}}>
             {groups.map(g=>(
@@ -642,12 +734,12 @@ export default function TripSplitter(){
             <div style={{background:"#FFF",border:"1px solid #E8E4DE",borderRadius:8,padding:"10px 14px",display:"flex",alignItems:"center",gap:10,marginBottom:8}}>
               <span style={{fontSize:18}}>🔁</span>
               <div style={{flex:1}}>
-                <div style={{fontSize:12,fontWeight:700,color:"#555"}}>Pre-trip Debt</div>
-                <div style={{fontSize:11,color:"#AAA"}}>
-                  {members.find(m=>m.id===preTrip.from)?.name} owes {members.find(m=>m.id===preTrip.to)?.name}
+                <div style={{fontSize:12,fontWeight:700,color:"#444"}}>Pre-trip Debt</div>
+                <div style={{fontSize:11,color:"#888"}}>
+                  {members.find(m=>m.id===existingDebts[0]?.from)?.name} owes {members.find(m=>m.id===existingDebts[0]?.to)?.name}
                 </div>
               </div>
-              <div style={{fontSize:13,fontWeight:800,color:"#888"}}>{fmt(preTrip.amount)}</div>
+              <div style={{fontSize:13,fontWeight:800,color:"#666"}}>{fmt((existingDebts[0]?.amount||0))}</div>
             </div>
           </div>
         </div>
@@ -658,7 +750,7 @@ export default function TripSplitter(){
           <div style={{padding:"14px 16px 10px",borderBottom:"1px solid #E8E4DE",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
             <div>
               <div style={{fontFamily:"'Nunito',sans-serif",fontSize:14,fontWeight:800,color:"#1A1A1A"}}>Balances</div>
-              <div style={{fontSize:11,color:"#999",marginTop:1}}>{settleMode==="live"?"Trip positions":"Who pays whom"}</div>
+              <div style={{fontSize:11,color:"#777",marginTop:1}}>{settleMode==="live"?"Trip positions":"Who pays whom"}</div>
             </div>
             {/* Toggle lives here now */}
             <div style={{display:"flex",background:"#EEEBE6",borderRadius:7,padding:2}}>
@@ -667,7 +759,7 @@ export default function TripSplitter(){
                   padding:"3px 10px",borderRadius:5,border:"none",cursor:"pointer",
                   fontSize:10,fontWeight:600,
                   background:settleMode===mode?"#FFF":"transparent",
-                  color:settleMode===mode?"#1A1A1A":"#999",
+                  color:settleMode===mode?"#1A1A1A":"#777",
                   transition:"all 0.15s",boxShadow:settleMode===mode?"0 1px 2px rgba(0,0,0,0.08)":"none"
                 }}>{mode==="live"?"Live":"Settle"}</button>
               ))}
@@ -685,9 +777,9 @@ export default function TripSplitter(){
                       <Avatar member={m} size={24}/>
                       <div style={{flex:1}}>
                         <div style={{fontSize:12,fontWeight:600,color:"#222"}}>{m.name.split(" ")[0]}</div>
-                        <div style={{fontSize:10,color:"#AAA",marginTop:1}}>{isPos?"overpaid":isNeg?"underpaid":"even"}</div>
+                        <div style={{fontSize:10,color:"#888",marginTop:1}}>{isPos?"overpaid":isNeg?"underpaid":"even"}</div>
                       </div>
-                      <span style={{fontSize:12,fontWeight:700,color:isPos?"#2A7A40":isNeg?"#B83010":"#999"}}>
+                      <span style={{fontSize:12,fontWeight:700,color:isPos?"#2A7A40":isNeg?"#B83010":"#777"}}>
                         {isPos?"+":isNeg?"-":""}{fmtShort(Math.abs(net))}
                       </span>
                     </div>
@@ -695,13 +787,13 @@ export default function TripSplitter(){
                 })}
                 {/* Pre-trip debt note */}
                 <div style={{marginTop:10,padding:"9px 11px",borderRadius:8,background:"#FFF",border:"1px solid #E8E4DE"}}>
-                  <div style={{fontSize:10,color:"#AAA",fontWeight:600,marginBottom:3,textTransform:"uppercase",letterSpacing:0.4}}>Pre-trip debt</div>
-                  <div style={{fontSize:12,color:"#555"}}>
-                    <span style={{fontWeight:700,color:members.find(m=>m.id===preTrip.from)?.color}}>{members.find(m=>m.id===preTrip.from)?.name}</span>
-                    <span style={{color:"#999"}}> owes </span>
-                    <span style={{fontWeight:700,color:members.find(m=>m.id===preTrip.to)?.color}}>{members.find(m=>m.id===preTrip.to)?.name}</span>
+                  <div style={{fontSize:10,color:"#888",fontWeight:600,marginBottom:3,textTransform:"uppercase",letterSpacing:0.4}}>Pre-trip debt</div>
+                  <div style={{fontSize:12,color:"#444"}}>
+                    <span style={{fontWeight:700,color:members.find(m=>m.id===existingDebts[0]?.from)?.color}}>{members.find(m=>m.id===existingDebts[0]?.from)?.name}</span>
+                    <span style={{color:"#777"}}> owes </span>
+                    <span style={{fontWeight:700,color:members.find(m=>m.id===existingDebts[0]?.to)?.color}}>{members.find(m=>m.id===existingDebts[0]?.to)?.name}</span>
                   </div>
-                  <div style={{fontSize:13,fontWeight:700,color:"#444",marginTop:3}}>{fmt(preTrip.amount)}</div>
+                  <div style={{fontSize:13,fontWeight:700,color:"#444",marginTop:3}}>{fmt((existingDebts[0]?.amount||0))}</div>
                 </div>
               </>
             ):(
@@ -711,18 +803,18 @@ export default function TripSplitter(){
                   return(
                     <div key={i} style={{marginBottom:8,padding:"10px 12px",borderRadius:8,background:"#FFF",border:"1px solid #E8E4DE"}}>
                       <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:6}}>
-                        <span style={{fontSize:10,fontWeight:700,color:"#999",width:16}}>#{i+1}</span>
+                        <span style={{fontSize:10,fontWeight:700,color:"#777",width:16}}>#{i+1}</span>
                         <Avatar member={f} size={20}/>
-                        <span style={{fontSize:11,color:"#CCC",marginLeft:1}}>→</span>
+                        <span style={{fontSize:11,color:"#AAA",marginLeft:1}}>→</span>
                         <Avatar member={to} size={20}/>
-                        <span style={{fontSize:11,color:"#555",marginLeft:2}}>{f?.name.split(" ")[0]} → {to?.name.split(" ")[0]}</span>
+                        <span style={{fontSize:11,color:"#444",marginLeft:2}}>{f?.name.split(" ")[0]} → {to?.name.split(" ")[0]}</span>
                       </div>
                       <div style={{fontSize:16,fontWeight:700,color:"#1A1A1A",textAlign:"right"}}>{fmt(t.amount)}</div>
                     </div>
                   );
                 })}
                 <div style={{marginTop:4,padding:"9px 11px",borderRadius:8,background:"#FFF",border:"1px solid #E8E4DE"}}>
-                  <div style={{fontSize:11,color:"#888"}}>All {members.length} members settle with <strong>{balances.transactions.length}</strong> transfer{balances.transactions.length!==1?"s":""}</div>
+                  <div style={{fontSize:11,color:"#666"}}>All {members.length} members settle with <strong>{balances.transactions.length}</strong> transfer{balances.transactions.length!==1?"s":""}</div>
                 </div>
               </>
             )}
@@ -733,28 +825,28 @@ export default function TripSplitter(){
         <div style={{width:"25%",display:"flex",flexDirection:"column",background:"#F7F5F1"}}>
           <div style={{padding:"14px 16px 10px",borderBottom:"1px solid #E8E4DE"}}>
             <div style={{fontFamily:"'Nunito',sans-serif",fontSize:14,fontWeight:800,color:"#1A1A1A"}}>Overview</div>
-            <div style={{fontSize:11,color:"#999",marginTop:1}}>Spend per person</div>
+            <div style={{fontSize:11,color:"#777",marginTop:1}}>Spend per person</div>
           </div>
           <div style={{flex:1,overflowY:"auto",padding:"14px 16px"}}>
 
             {/* Grand total — subtle, readable */}
-            <div style={{marginBottom:18,padding:"12px 14px",borderRadius:8,background:"#FFF",border:"1px solid #E8E4DE"}}>
-              <div style={{fontSize:10,color:"#AAA",fontWeight:600,textTransform:"uppercase",letterSpacing:0.5,marginBottom:6}}>Grand total</div>
+            <div style={{marginBottom:18,padding:"12px 14px",borderRadius:8,background:"#F2E8DA",border:"1px solid #DDCFBA"}}>
+              <div style={{fontSize:10,color:"#888",fontWeight:600,textTransform:"uppercase",letterSpacing:0.5,marginBottom:6}}>Grand total</div>
               <div style={{display:"flex",alignItems:"baseline",gap:6}}>
                 <span style={{fontFamily:"'Nunito',sans-serif",fontSize:22,fontWeight:800,color:"#1A1A1A",lineHeight:1}}>{fmt(grandTotal)}</span>
               </div>
-              <div style={{fontSize:11,color:"#AAA",marginTop:4}}>{groups.length} expense groups · {members.length} people</div>
+              <div style={{fontSize:11,color:"#888",marginTop:4}}>{groups.length} expense groups · {members.length} people</div>
             </div>
 
             {/* Share bars */}
             <div style={{marginBottom:18}}>
-              <div style={{fontSize:10,fontWeight:600,color:"#AAA",letterSpacing:0.5,marginBottom:10,textTransform:"uppercase"}}>Each person's share</div>
+              <div style={{fontSize:10,fontWeight:600,color:"#888",letterSpacing:0.5,marginBottom:10,textTransform:"uppercase"}}>Each person's share</div>
               {members.map(m=><MemberBar key={m.id} member={m} value={balances.owed[m.id]} max={maxSpend}/>)}
             </div>
 
             {/* Paid vs owed rows */}
             <div>
-              <div style={{fontSize:10,fontWeight:600,color:"#AAA",letterSpacing:0.5,marginBottom:8,textTransform:"uppercase"}}>Paid vs owed</div>
+              <div style={{fontSize:10,fontWeight:600,color:"#888",letterSpacing:0.5,marginBottom:8,textTransform:"uppercase"}}>Paid vs owed</div>
               {members.map(m=>{
                 const paid=balances.paid[m.id], owed=balances.owed[m.id], net=paid-owed;
                 const isPos=net>0.01, isNeg=net<-0.01;
@@ -763,9 +855,9 @@ export default function TripSplitter(){
                     <Avatar member={m} size={24}/>
                     <div style={{flex:1}}>
                       <div style={{fontSize:11,fontWeight:600,color:"#222"}}>{m.name.split(" ")[0]}</div>
-                      <div style={{fontSize:10,color:"#AAA"}}>paid {fmtShort(paid)}</div>
+                      <div style={{fontSize:10,color:"#888"}}>paid {fmtShort(paid)}</div>
                     </div>
-                    <span style={{fontSize:12,fontWeight:700,color:isPos?"#2A7A40":isNeg?"#B83010":"#999"}}>
+                    <span style={{fontSize:12,fontWeight:700,color:isPos?"#2A7A40":isNeg?"#B83010":"#777"}}>
                       {isPos?"+":isNeg?"-":""}{fmtShort(Math.abs(net))}
                     </span>
                   </div>
@@ -779,6 +871,12 @@ export default function TripSplitter(){
 
       {showAdd&&<AddGroupModal members={members} onAdd={addGroup} onClose={()=>setShowAdd(false)}/>}
       {showSettings&&<TripSettingsModal tripName={tripName} members={members} onSave={saveSettings} onClose={()=>setShowSettings(false)}/>}
+      {showExistingDebts&&<ExistingDebtsModal members={members} debts={existingDebts} onSave={setExistingDebts} onClose={()=>setShowExistingDebts(false)}/>}
     </div>
   );
 }
+
+
+
+
+
