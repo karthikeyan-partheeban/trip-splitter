@@ -737,10 +737,10 @@ export default function TripSplitter(){
         .dark-mode .col2{background:#252525!important}
         .dark-mode .col2 [style*="background:#FFF"],
         .dark-mode .col3 [style*="background:#FFF"]{background:#1F1F1F!important}
-        .dark-mode .col2 [style*="border:\"1px solid #E8E4DE\""],
-        .dark-mode .col3 [style*="border:\"1px solid #E8E4DE\""],
-        .dark-mode .col2 [style*="borderBottom:\"1px solid #E8E4DE\""],
-        .dark-mode .col2 [style*="borderRight:\"1px solid #E8E4DE\""]{border-color:#3A3A3A!important}
+        .dark-mode .col2 [style*='border:"1px solid #E8E4DE"'],
+        .dark-mode .col3 [style*='border:"1px solid #E8E4DE"'],
+        .dark-mode .col2 [style*='borderBottom:"1px solid #E8E4DE"'],
+        .dark-mode .col2 [style*='borderRight:"1px solid #E8E4DE"']{border-color:#3A3A3A!important}
         .dark-mode .col2 [style*="color:#1A1A1A"],
         .dark-mode .col2 [style*="color:#222"],
         .dark-mode .col2 [style*="color:#444"],
