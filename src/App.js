@@ -58,15 +58,6 @@ function cloneData(data){
 }
 
 // ─── URL SHARE ENCODING ───────────────────────────────────────────────────────
-function encodeShareState(state) {
-  try {
-    const bytes = new TextEncoder().encode(JSON.stringify(state));
-    let bin = '';
-    bytes.forEach(b => { bin += String.fromCharCode(b); });
-    return btoa(bin);
-  } catch(e) { return null; }
-}
-
 function decodeShareState(encoded) {
   try {
     const bin = atob(encoded);
