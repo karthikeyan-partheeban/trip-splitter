@@ -1195,12 +1195,14 @@ export default function TripSplitter(){
     setTripName(snap.tripName); setMembers(snap.members); setGroups(snap.groups);
     setExistingDebts(snap.existingDebts); setCurrencies(snap.currencies);
     pushHistory(snap);
+    syncToFirebase(snap,currentUser,"loaded sample data");
   }
   function resetAllData(){
     const emptyMembers=DATASET_1_MEMBERS.map(m=>({...m,name:"",initials:"--"}));
     const snap={tripName:"New Trip",members:emptyMembers,groups:[],existingDebts:[],currencies:cloneData(DEFAULT_CURRENCIES)};
     setTripName(snap.tripName); setMembers(snap.members); setGroups(snap.groups);
     setExistingDebts(snap.existingDebts); setCurrencies(snap.currencies);
+    syncToFirebase(snap,currentUser,"reset all trip data");
     setHistory([snap]); setHistoryIdx(0); setShowReset(false);
   }
   function saveSettings(name,people){
@@ -1254,6 +1256,7 @@ export default function TripSplitter(){
       <div class="sec">Final Settlement</div>${txns}
     </body></html>`;
     const win=window.open("","_blank");
+    if (!win) return;
     win.document.write(html);
     win.document.close();
     setTimeout(()=>win.print(),500);
@@ -1565,7 +1568,7 @@ export default function TripSplitter(){
             <div>
               <div style={{fontSize:10,fontWeight:600,color:theme.muted,letterSpacing:0.5,marginBottom:8,textTransform:"uppercase"}}>Net settlement status</div>
               {visibleMembers.map(m=>{
-                const paid=balances.paid[m.id], owed=balances.owed[m.id], net=paid-owed;
+                const net = balances.finalNet[m.id] || 0;
                 const isPos=net>0.01, isNeg=net<-0.01;
                 return(
                   <div key={m.id} style={{display:"flex",alignItems:"center",gap:8,marginBottom:6,padding:"8px 10px",borderRadius:8,background:theme.panelBg,border:`1px solid ${theme.border}`}}>
