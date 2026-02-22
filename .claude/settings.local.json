@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git add src/App.js)",
+      "Bash(git commit:*)"
+    ]
+  }
+}

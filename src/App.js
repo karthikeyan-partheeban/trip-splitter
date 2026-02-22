@@ -3,6 +3,25 @@ import { useState } from "react";
 // ─── DATA ────────────────────────────────────────────────────────────────────
 const MEMBER_COLORS = ["#C17D3C","#3C7DC1","#7C3CC1","#3CC17D","#C13C6A","#3CC1B8","#C1A03C","#6A3CC1"];
 
+const COMMON_CURRENCIES = [
+  { code:"INR", name:"Indian Rupee",      symbol:"₹"  },
+  { code:"USD", name:"US Dollar",         symbol:"$"  },
+  { code:"EUR", name:"Euro",              symbol:"€"  },
+  { code:"GBP", name:"British Pound",     symbol:"£"  },
+  { code:"JPY", name:"Japanese Yen",      symbol:"¥"  },
+  { code:"THB", name:"Thai Baht",         symbol:"฿"  },
+  { code:"SGD", name:"Singapore Dollar",  symbol:"S$" },
+  { code:"AUD", name:"Australian Dollar", symbol:"A$" },
+  { code:"CAD", name:"Canadian Dollar",   symbol:"C$" },
+  { code:"CHF", name:"Swiss Franc",       symbol:"Fr" },
+  { code:"AED", name:"UAE Dirham",        symbol:"د.إ"},
+  { code:"MYR", name:"Malaysian Ringgit", symbol:"RM" },
+];
+
+const DEFAULT_CURRENCIES = [
+  { code:"INR", name:"Indian Rupee", symbol:"₹", rate:1, isBase:true },
+];
+
 const DATASET_1_MEMBERS = [
   { id: "K", name: "Avery",  color: "#C17D3C", initials: "AV" },
   { id: "J", name: "Jordan", color: "#3C7DC1", initials: "JO" },
@@ -11,21 +30,21 @@ const DATASET_1_MEMBERS = [
 ];
 
 const DATASET_1_GROUPS = [
-  { id:"g1", label:"Flight Tickets",      emoji:"\u2708\uFE0F", paidBy:"J", total:76621,    note:"Paid for three travelers",        shares:{K:25540.33,J:25540.33,S:25540.34,Y:0} },
-  { id:"g2", label:"Solo Ticket",         emoji:"\uD83C\uDF9F\uFE0F", paidBy:"Y", total:24392,    note:"One person expense",              shares:{K:0,J:0,S:0,Y:24392} },
-  { id:"g3", label:"Common Cash",         emoji:"\uD83D\uDCB5", paidBy:"J", total:34014.83, note:"Shared equally among all 4",     shares:{K:8503.71,J:8503.71,S:8503.71,Y:8503.70} },
-  { id:"g4", label:"ATM Cash",            emoji:"\uD83C\uDFE7", paidBy:"Y", total:20826,    note:"Individual spend by person",      shares:{K:7480.74,J:4448.42,S:4448.42,Y:4448.42} },
-  { id:"g5", label:"Souvenirs",           emoji:"\uD83D\uDED2", paidBy:"Y", total:6840,     note:"Per person souvenir spend",       shares:{K:3710.11,J:0,S:777.89,Y:2352} },
-  { id:"g6", label:"Hotels (3 Nights)",   emoji:"\uD83C\uDFE8", paidBy:"K", total:28526.11, note:"Split equally",                  shares:{K:7131.53,J:7131.53,S:7131.53,Y:7131.52} },
-  { id:"g7", label:"Shared Cash",         emoji:"\uD83D\uDCB0", paidBy:"K", total:39231,    note:"Split equally among all",         shares:{K:9807.75,J:9807.75,S:9807.75,Y:9807.75} },
+  { id:"g1", label:"Flight Tickets",      emoji:"\u2708\uFE0F", paidBy:"J", total:76621,    currency:"INR", note:"Paid for three travelers",        shares:{K:25540.33,J:25540.33,S:25540.34,Y:0} },
+  { id:"g2", label:"Solo Ticket",         emoji:"\uD83C\uDF9F\uFE0F", paidBy:"Y", total:24392,    currency:"INR", note:"One person expense",              shares:{K:0,J:0,S:0,Y:24392} },
+  { id:"g3", label:"Common Cash",         emoji:"\uD83D\uDCB5", paidBy:"J", total:34014.83, currency:"INR", note:"Shared equally among all 4",     shares:{K:8503.71,J:8503.71,S:8503.71,Y:8503.70} },
+  { id:"g4", label:"ATM Cash",            emoji:"\uD83C\uDFE7", paidBy:"Y", total:20826,    currency:"INR", note:"Individual spend by person",      shares:{K:7480.74,J:4448.42,S:4448.42,Y:4448.42} },
+  { id:"g5", label:"Souvenirs",           emoji:"\uD83D\uDED2", paidBy:"Y", total:6840,     currency:"INR", note:"Per person souvenir spend",       shares:{K:3710.11,J:0,S:777.89,Y:2352} },
+  { id:"g6", label:"Hotels (3 Nights)",   emoji:"\uD83C\uDFE8", paidBy:"K", total:28526.11, currency:"INR", note:"Split equally",                  shares:{K:7131.53,J:7131.53,S:7131.53,Y:7131.52} },
+  { id:"g7", label:"Shared Cash",         emoji:"\uD83D\uDCB0", paidBy:"K", total:39231,    currency:"INR", note:"Split equally among all",         shares:{K:9807.75,J:9807.75,S:9807.75,Y:9807.75} },
 ];
 
 const DATASET_1_EXISTING_DEBTS = [{ id:"d1", from:"J", to:"K", amount:40000 }];
 const DATASET_1_TRIP_NAME = "Thailand Trip";
 
 // ─── HELPERS ─────────────────────────────────────────────────────────────────
-const fmt      = n => "₹" + Math.abs(n).toLocaleString("en-IN", { minimumFractionDigits:2, maximumFractionDigits:2 });
-const fmtShort = n => "₹" + Math.abs(n).toLocaleString("en-IN", { maximumFractionDigits:0 });
+const fmt      = (n, symbol="₹") => symbol + Math.abs(n).toLocaleString("en-IN", { minimumFractionDigits:2, maximumFractionDigits:2 });
+const fmtShort = (n, symbol="₹") => symbol + Math.abs(n).toLocaleString("en-IN", { maximumFractionDigits:0 });
 
 function makeInitials(name) {
   const w = name.trim().split(/\s+/);
@@ -36,12 +55,18 @@ function cloneData(data){
   return JSON.parse(JSON.stringify(data));
 }
 
-function computeBalances(members, groups, existingDebts=[]) {
+function computeBalances(members, groups, existingDebts=[], currencies=[]) {
+  const toBase = (amount, code) => {
+    if (!code || !currencies.length) return amount;
+    const c = currencies.find(x => x.code === code);
+    if (!c || c.isBase) return amount;
+    return amount * c.rate;
+  };
   const paid={}, owed={};
   members.forEach(m => { paid[m.id]=0; owed[m.id]=0; });
   groups.forEach(g => {
-    if (paid[g.paidBy] !== undefined) paid[g.paidBy] += g.total;
-    members.forEach(m => { owed[m.id] += (g.shares[m.id]||0); });
+    if (paid[g.paidBy] !== undefined) paid[g.paidBy] += toBase(g.total, g.currency);
+    members.forEach(m => { owed[m.id] += toBase(g.shares[m.id]||0, g.currency); });
   });
   const tripNet={};
   members.forEach(m => { tripNet[m.id] = paid[m.id]-owed[m.id]; });
@@ -76,7 +101,7 @@ function Avatar({member,size=28}){
 }
 
 // ─── MEMBER BAR ──────────────────────────────────────────────────────────────
-function MemberBar({member,value,max,textColor="#2C2C2C",valueColor="#1A1A1A",trackColor="#F0EDE8"}){
+function MemberBar({member,value,max,textColor="#2C2C2C",valueColor="#1A1A1A",trackColor="#F0EDE8",symbol="₹"}){
   const pct=max>0?Math.min(100,Math.abs(value)/max*100):0;
   return(
     <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}>
@@ -84,7 +109,7 @@ function MemberBar({member,value,max,textColor="#2C2C2C",valueColor="#1A1A1A",tr
       <div style={{flex:1}}>
         <div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}>
           <span style={{fontSize:11,fontWeight:600,color:textColor}}>{member.name}</span>
-          <span style={{fontSize:11,fontWeight:700,color:valueColor}}>{fmtShort(value)}</span>
+          <span style={{fontSize:11,fontWeight:700,color:valueColor}}>{fmtShort(value,symbol)}</span>
         </div>
         <div style={{height:4,background:trackColor,borderRadius:2,overflow:"hidden"}}>
           <div style={{width:pct+"%",height:"100%",background:member.color,borderRadius:2,transition:"width 0.4s ease"}}/>
@@ -95,23 +120,22 @@ function MemberBar({member,value,max,textColor="#2C2C2C",valueColor="#1A1A1A",tr
 }
 
 // ─── GROUP CARD ──────────────────────────────────────────────────────────────
-function GroupCard({group,members,onUpdate,onDelete,isDark=false}){
+function GroupCard({group,members,currencies=DEFAULT_CURRENCIES,onEdit,onDelete,isDark=false}){
   const [expanded,setExpanded]=useState(false);
-  const [editing,setEditing]=useState(false);
-  const [draft,setDraft]=useState(null);
   const payer=members.find(m=>m.id===group.paidBy);
   const totalShares=Object.values(group.shares).reduce((a,b)=>a+b,0);
-  const diff=Math.abs(group.total-totalShares);
 
-  function startEdit(){ setDraft(JSON.parse(JSON.stringify(group))); setEditing(true); }
-  function saveEdit(){ onUpdate(draft); setEditing(false); }
-  function cancelEdit(){ setEditing(false); setDraft(null); }
-  function splitEqual(d){ const per=d.total/members.length; return {...d,shares:Object.fromEntries(members.map(m=>[m.id,per]))}; }
+  const baseCur  = currencies.find(c=>c.isBase) || {code:"INR",symbol:"₹",rate:1,isBase:true};
+  const groupCur = currencies.find(c=>c.code===group.currency) || baseCur;
+  const isConverted = !groupCur.isBase;
+  const toBase = amt => isConverted ? amt * groupCur.rate : amt;
+  const fmtBase = n => fmt(n, baseCur.symbol);
+  const fmtGroup = n => fmt(n, groupCur.symbol);
+  const diff = Math.abs(toBase(group.total) - toBase(totalShares));
 
   const card   = isDark?"#1F1F1F":"#FFF";
   const cardBdr= isDark?"1px solid #3A3A3A":"1px solid #E8E4DE";
   const expBg  = isDark?"#252525":"#FAFAFA";
-  const rowBg  = isDark?"#2A2A2A":"#F9F6F1";
   const rowBdr = isDark?"1px solid #3A3A3A":"1px solid #EDE8E0";
   const txt    = isDark?"#EAEAEA":"#1A1A1A";
   const muted  = isDark?"#BEBEBE":"#666";
@@ -120,7 +144,7 @@ function GroupCard({group,members,onUpdate,onDelete,isDark=false}){
 
   return(
     <div style={{background:card,border:cardBdr,borderRadius:8,marginBottom:6,overflow:"hidden"}}>
-      <div onClick={()=>!editing&&setExpanded(e=>!e)} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",cursor:"pointer",userSelect:"none"}}>
+      <div onClick={()=>setExpanded(e=>!e)} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",cursor:"pointer",userSelect:"none"}}>
         <span style={{fontSize:18}}>{group.emoji}</span>
         <div style={{flex:1}}>
           <div style={{fontSize:13,fontWeight:700,color:txt}}>{group.label}</div>
@@ -130,13 +154,14 @@ function GroupCard({group,members,onUpdate,onDelete,isDark=false}){
           </div>
         </div>
         <div style={{textAlign:"right"}}>
-          <div style={{fontSize:14,fontWeight:800,color:txt}}>{fmt(group.total)}</div>
-          {diff>0.5&&<div style={{fontSize:10,color:"#E07020",fontWeight:600}}>⚠ Δ {fmt(diff)}</div>}
+          <div style={{fontSize:14,fontWeight:800,color:txt}}>{fmtBase(toBase(group.total))}</div>
+          {isConverted&&<div style={{fontSize:10,color:muted,marginTop:1}}>{fmtGroup(group.total)} {groupCur.code}</div>}
+          {diff>0.5&&<div style={{fontSize:10,color:"#E07020",fontWeight:600}}>⚠ Δ {fmtBase(diff)}</div>}
         </div>
         <span style={{fontSize:14,color:"#888",marginLeft:4,transition:"transform 0.2s",transform:expanded?"rotate(180deg)":"rotate(0deg)"}}>▾</span>
       </div>
 
-      {expanded&&!editing&&(
+      {expanded&&(
         <div style={{borderTop:cardBdr,padding:"10px 14px 12px",background:expBg}}>
           <div style={{marginBottom:10,borderRadius:7,overflow:"hidden",border:rowBdr}}>
             {members.map((m,idx)=>(
@@ -144,59 +169,17 @@ function GroupCard({group,members,onUpdate,onDelete,isDark=false}){
                 <Avatar member={m} size={22}/>
                 <span style={{flex:1,fontSize:12,fontWeight:600,color:txt}}>{m.name}</span>
                 <span style={{fontSize:13,fontWeight:700,color:(group.shares[m.id]||0)>0?txt:isDark?"#555":"#BBB"}}>
-                  {(group.shares[m.id]||0)>0?fmt(group.shares[m.id]):"—"}
+                  {(group.shares[m.id]||0)>0?fmtBase(toBase(group.shares[m.id])):"—"}
                 </span>
+                {isConverted&&(group.shares[m.id]||0)>0&&(
+                  <span style={{fontSize:10,color:muted,marginLeft:2}}>{fmtGroup(group.shares[m.id])}</span>
+                )}
               </div>
             ))}
           </div>
           <div style={{display:"flex",gap:8}}>
-            <button onClick={startEdit} style={{flex:1,padding:"6px 12px",borderRadius:6,border:inpBdr,background:inpBg,fontSize:12,fontWeight:600,color:isDark?"#EAEAEA":"#444",cursor:"pointer"}}>Edit</button>
+            <button onClick={()=>onEdit(group)} style={{flex:1,padding:"6px 12px",borderRadius:6,border:inpBdr,background:inpBg,fontSize:12,fontWeight:600,color:isDark?"#EAEAEA":"#444",cursor:"pointer"}}>Edit</button>
             <button onClick={()=>onDelete(group.id)} style={{padding:"6px 12px",borderRadius:6,border:"1px solid #FCC",background:"#FFF8F8",fontSize:12,fontWeight:600,color:"#C44",cursor:"pointer"}}>Delete</button>
-          </div>
-        </div>
-      )}
-
-      {expanded&&editing&&draft&&(
-        <div style={{borderTop:cardBdr,padding:"12px 14px 14px",background:expBg}}>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}}>
-            <div>
-              <label style={{fontSize:10,color:muted,fontWeight:600,display:"block",marginBottom:3}}>LABEL</label>
-              <input value={draft.label} onChange={e=>setDraft({...draft,label:e.target.value})} style={{width:"100%",padding:"6px 8px",borderRadius:6,border:inpBdr,fontSize:12,boxSizing:"border-box",background:inpBg,color:txt}}/>
-            </div>
-            <div>
-              <label style={{fontSize:10,color:muted,fontWeight:600,display:"block",marginBottom:3}}>TOTAL (₹)</label>
-              <input type="number" value={draft.total} onChange={e=>setDraft({...draft,total:parseFloat(e.target.value)||0})} style={{width:"100%",padding:"6px 8px",borderRadius:6,border:inpBdr,fontSize:12,boxSizing:"border-box",background:inpBg,color:txt}}/>
-            </div>
-            <div>
-              <label style={{fontSize:10,color:muted,fontWeight:600,display:"block",marginBottom:3}}>PAID BY</label>
-              <select value={draft.paidBy} onChange={e=>setDraft({...draft,paidBy:e.target.value})} style={{width:"100%",padding:"6px 8px",borderRadius:6,border:inpBdr,fontSize:12,boxSizing:"border-box",background:inpBg,color:txt}}>
-                {members.map(m=><option key={m.id} value={m.id}>{m.name}</option>)}
-              </select>
-            </div>
-            <div>
-              <label style={{fontSize:10,color:muted,fontWeight:600,display:"block",marginBottom:3}}>NOTE</label>
-              <input value={draft.note} onChange={e=>setDraft({...draft,note:e.target.value})} style={{width:"100%",padding:"6px 8px",borderRadius:6,border:inpBdr,fontSize:12,boxSizing:"border-box",background:inpBg,color:txt}}/>
-            </div>
-          </div>
-          <div style={{marginBottom:8}}>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
-              <label style={{fontSize:10,color:muted,fontWeight:600}}>SHARES (₹)</label>
-              <button onClick={()=>setDraft(splitEqual(draft))} style={{fontSize:10,padding:"3px 8px",borderRadius:5,border:inpBdr,background:inpBg,cursor:"pointer",color:isDark?"#EAEAEA":"#444",fontWeight:600}}>Split equally</button>
-            </div>
-            {members.map(m=>(
-              <div key={m.id} style={{display:"flex",alignItems:"center",gap:10,marginBottom:6,padding:"6px 10px",borderRadius:7,background:rowBg,border:rowBdr}}>
-                <Avatar member={m} size={22}/>
-                <span style={{fontSize:12,fontWeight:600,color:txt,flex:1}}>{m.name}</span>
-                <input type="number" value={draft.shares[m.id]??0} onChange={e=>setDraft({...draft,shares:{...draft.shares,[m.id]:parseFloat(e.target.value)||0}})} style={{width:90,padding:"4px 8px",borderRadius:5,border:inpBdr,fontSize:12,textAlign:"right",background:inpBg,color:txt}}/>
-              </div>
-            ))}
-            {Math.abs(draft.total-Object.values(draft.shares).reduce((a,b)=>a+b,0))>0.5&&(
-              <div style={{fontSize:11,color:"#E07020",marginTop:4,fontWeight:600}}>⚠ Shares sum to {fmt(Object.values(draft.shares).reduce((a,b)=>a+b,0))} — total is {fmt(draft.total)}</div>
-            )}
-          </div>
-          <div style={{display:"flex",gap:8}}>
-            <button onClick={saveEdit} style={{flex:1,padding:"7px 12px",borderRadius:6,border:"none",background:"#2C2C2C",color:"#FFF",fontSize:12,fontWeight:700,cursor:"pointer"}}>Save changes</button>
-            <button onClick={cancelEdit} style={{padding:"7px 12px",borderRadius:6,border:inpBdr,background:inpBg,fontSize:12,fontWeight:600,color:muted,cursor:"pointer"}}>Cancel</button>
           </div>
         </div>
       )}
@@ -205,23 +188,34 @@ function GroupCard({group,members,onUpdate,onDelete,isDark=false}){
 }
 
 // ─── ADD GROUP MODAL ──────────────────────────────────────────────────────────
-// Split modes:
-//   "equal"   — entire amount split equally, no inputs needed
-//   "mixed"   — shared portion split equally + personal amounts per person
-//   "custom"  — each person's share entered manually
-function AddGroupModal({members,onAdd,onClose}){
-  const [form,setForm]=useState({
+function AddGroupModal({members,currencies=DEFAULT_CURRENCIES,initialGroup=null,onAdd,onClose}){
+  const isEdit = !!initialGroup;
+  const baseCur = currencies.find(c=>c.isBase) || currencies[0] || {code:"INR",symbol:"₹"};
+  const [form,setForm]=useState(isEdit ? {
+    label:     initialGroup.label,
+    emoji:     initialGroup.emoji,
+    paidBy:    initialGroup.paidBy,
+    total:     String(initialGroup.total),
+    note:      initialGroup.note||"",
+    currency:  initialGroup.currency||baseCur.code,
+    splitMode: "custom",
+    sharedAmount: String(initialGroup.total),
+    personal:  {...initialGroup.shares},
+  } : {
     label:"",emoji:"💳",paidBy:members[0]?.id||"",total:"",note:"",
-    splitMode:"equal",          // "equal" | "mixed" | "custom"
-    sharedAmount:"",            // used in mixed mode — the equally-split portion
-    personal:Object.fromEntries(members.map(m=>[m.id,0])),  // per-person top-ups
+    currency:baseCur.code,
+    splitMode:"equal",
+    sharedAmount:"",
+    personal:Object.fromEntries(members.map(m=>[m.id,0])),
   });
+
+  const selectedCur = currencies.find(c=>c.code===form.currency) || baseCur;
+  const fmtSel = n => fmt(n, selectedCur.symbol);
 
   const total        = parseFloat(form.total)||0;
   const sharedAmt    = parseFloat(form.sharedAmount)||0;
   const personalSum  = Object.values(form.personal).reduce((a,b)=>a+b,0);
 
-  // Compute final shares from current mode
   function computeShares(){
     if(form.splitMode==="equal"){
       const per=+(total/members.length).toFixed(2);
@@ -231,7 +225,6 @@ function AddGroupModal({members,onAdd,onClose}){
       const equalPer=+(sharedAmt/members.length).toFixed(2);
       return Object.fromEntries(members.map(m=>[m.id,equalPer+(form.personal[m.id]||0)]));
     }
-    // custom
     return {...form.personal};
   }
 
@@ -239,7 +232,6 @@ function AddGroupModal({members,onAdd,onClose}){
   const sharesSum    = Object.values(finalShares).reduce((a,b)=>a+b,0);
   const balanced     = total>0 && Math.abs(total-sharesSum)<=0.5;
 
-  // When total changes, refresh sharedAmount default for mixed mode
   function handleTotal(val){
     setForm(f=>({...f, total:val, sharedAmount:val}));
   }
@@ -248,14 +240,14 @@ function AddGroupModal({members,onAdd,onClose}){
     setForm(f=>({...f, sharedAmount:val}));
   }
 
-  // Validate mixed: shared + personal must equal total
   const mixedPersonalSlack = total - sharedAmt - personalSum;
 
   function submit(){
     if(!form.label||!form.total) return;
     onAdd({
-      id:"g"+Date.now(), label:form.label, emoji:form.emoji,
-      paidBy:form.paidBy, total, note:form.note,
+      id: isEdit ? initialGroup.id : "g"+Date.now(),
+      label:form.label, emoji:form.emoji,
+      paidBy:form.paidBy, total, currency:form.currency, note:form.note,
       shares:finalShares,
     });
     onClose();
@@ -272,11 +264,11 @@ function AddGroupModal({members,onAdd,onClose}){
 
   return(
     <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.45)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
-      <div style={{background:"#FFF",borderRadius:14,padding:24,width:440,maxHeight:"88vh",overflowY:"auto",boxShadow:"0 20px 60px rgba(0,0,0,0.2)"}}>
+      <div style={{background:"#FFF",borderRadius:14,padding:24,width:460,maxHeight:"88vh",overflowY:"auto",boxShadow:"0 20px 60px rgba(0,0,0,0.2)"}}>
 
         {/* Header */}
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18}}>
-          <h3 style={{margin:0,fontSize:15,fontWeight:800,fontFamily:"'Nunito',sans-serif"}}>Add Expense Group</h3>
+          <h3 style={{margin:0,fontSize:15,fontWeight:800,fontFamily:"'Nunito',sans-serif"}}>{isEdit?"Edit Expense Group":"Add Expense Group"}</h3>
           <button onClick={onClose} style={{border:"none",background:"none",fontSize:18,cursor:"pointer",color:"#777",lineHeight:1}}>✕</button>
         </div>
 
@@ -293,14 +285,25 @@ function AddGroupModal({members,onAdd,onClose}){
               onChange={e=>setForm({...form,label:e.target.value})} style={inputStyle}/>
           </div>
         </div>
-        
 
-        {/* Total + Paid by */}
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:12}}>
+        {/* Total + Currency + Paid by */}
+        <div style={{display:"grid",gridTemplateColumns:"1fr auto 1fr",gap:8,marginBottom:12}}>
           <div>
-            <label style={labelStyle}>Total (₹)</label>
+            <label style={labelStyle}>Total ({selectedCur.symbol})</label>
             <input type="number" placeholder="0" value={form.total}
               onChange={e=>handleTotal(e.target.value)} style={inputStyle}/>
+          </div>
+          <div>
+            <label style={labelStyle}>Currency</label>
+            <select
+              value={form.currency}
+              onChange={e=>setForm(f=>({...f,currency:e.target.value}))}
+              style={{...inputStyle,width:"auto",minWidth:64,paddingRight:4}}
+            >
+              {currencies.map(c=>(
+                <option key={c.code} value={c.code}>{c.code}{c.isBase?" ★":""}</option>
+              ))}
+            </select>
           </div>
           <div>
             <label style={labelStyle}>Paid by</label>
@@ -309,7 +312,13 @@ function AddGroupModal({members,onAdd,onClose}){
             </select>
           </div>
         </div>
-        
+
+        {/* Conversion hint */}
+        {!selectedCur.isBase&&total>0&&(
+          <div style={{marginBottom:12,padding:"6px 10px",background:"#F0F6FF",borderRadius:7,border:"1px solid #C8DCEE",fontSize:11,color:"#3C7DC1"}}>
+            {fmtSel(total)} {selectedCur.code} ≈ {fmt(total*selectedCur.rate, baseCur.symbol)} {baseCur.code} · all details shown in {baseCur.code}
+          </div>
+        )}
 
         {/* Note */}
         <div style={{marginBottom:16}}>
@@ -340,7 +349,6 @@ function AddGroupModal({members,onAdd,onClose}){
             ))}
           </div>
         </div>
-        
 
         {/* ── EQUAL mode: just show preview ──────────────────────────────── */}
         {form.splitMode==="equal"&&total>0&&(
@@ -350,7 +358,7 @@ function AddGroupModal({members,onAdd,onClose}){
               <div key={m.id} style={{display:"flex",alignItems:"center",gap:8,marginBottom:4}}>
                 <Avatar member={m} size={20}/>
                 <span style={{flex:1,fontSize:12,color:"#333"}}>{m.name}</span>
-                <span style={{fontSize:12,fontWeight:700,color:"#2A8C4A"}}>{fmt(total/members.length)}</span>
+                <span style={{fontSize:12,fontWeight:700,color:"#2A8C4A"}}>{fmtSel(total/members.length)}</span>
               </div>
             ))}
           </div>
@@ -368,7 +376,7 @@ function AddGroupModal({members,onAdd,onClose}){
                   style={{...inputStyle,fontWeight:700,fontSize:14}}/>
                 {sharedAmt>0&&(
                   <span style={{fontSize:11,color:"#3C7DC1",fontWeight:600,whiteSpace:"nowrap"}}>
-                    = {fmt(sharedAmt/members.length)} each
+                    = {fmtSel(sharedAmt/members.length)} each
                   </span>
                 )}
               </div>
@@ -383,7 +391,7 @@ function AddGroupModal({members,onAdd,onClose}){
                 <label style={{...labelStyle,color:"#C17D3C",margin:0}}>Personal top-up per person</label>
                 {total>0&&sharedAmt<=total&&(
                   <span style={{fontSize:10,color:"#C17D3C",fontWeight:600}}>
-                    Remaining: {fmt(total-sharedAmt)}
+                    Remaining: {fmtSel(total-sharedAmt)}
                   </span>
                 )}
               </div>
@@ -394,8 +402,8 @@ function AddGroupModal({members,onAdd,onClose}){
                     <div style={{fontSize:12,fontWeight:600,color:"#222"}}>{m.name}</div>
                     {sharedAmt>0&&(
                       <div style={{fontSize:10,color:"#888"}}>
-                        shared {fmt(sharedAmt/members.length)}
-                        {(form.personal[m.id]||0)>0&&<span style={{color:"#C17D3C"}}> + personal {fmt(form.personal[m.id])}</span>}
+                        shared {fmtSel(sharedAmt/members.length)}
+                        {(form.personal[m.id]||0)>0&&<span style={{color:"#C17D3C"}}> + personal {fmtSel(form.personal[m.id])}</span>}
                       </div>
                     )}
                   </div>
@@ -405,10 +413,9 @@ function AddGroupModal({members,onAdd,onClose}){
                     style={{width:90,padding:"5px 8px",borderRadius:6,border:"1px solid #BBB",fontSize:13,textAlign:"right",fontWeight:600}}/>
                 </div>
               ))}
-              {/* Personal slack check */}
               {total>0&&sharedAmt>0&&Math.abs(mixedPersonalSlack)>0.5&&(
                 <div style={{fontSize:11,color:"#E07020",fontWeight:600,marginTop:4,padding:"6px 8px",background:"#FFF8F0",borderRadius:6}}>
-                  ⚠ Personal amounts sum to {fmt(personalSum)} — expected {fmt(total-sharedAmt)} · diff {fmt(mixedPersonalSlack)}
+                  ⚠ Personal amounts sum to {fmtSel(personalSum)} — expected {fmtSel(total-sharedAmt)} · diff {fmtSel(mixedPersonalSlack)}
                 </div>
               )}
               {total>0&&sharedAmt>0&&Math.abs(mixedPersonalSlack)<=0.5&&(
@@ -424,7 +431,7 @@ function AddGroupModal({members,onAdd,onClose}){
                   <div key={m.id} style={{display:"flex",alignItems:"center",gap:8,marginBottom:4}}>
                     <Avatar member={m} size={20}/>
                     <span style={{flex:1,fontSize:12,color:"#333"}}>{m.name}</span>
-                    <span style={{fontSize:13,fontWeight:800,color:"#1A1A1A"}}>{fmt(finalShares[m.id]||0)}</span>
+                    <span style={{fontSize:13,fontWeight:800,color:"#1A1A1A"}}>{fmtSel(finalShares[m.id]||0)}</span>
                   </div>
                 ))}
               </div>
@@ -436,7 +443,7 @@ function AddGroupModal({members,onAdd,onClose}){
         {form.splitMode==="custom"&&(
           <div style={{marginBottom:16}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
-              <label style={labelStyle}>Amount per person</label>
+              <label style={labelStyle}>Amount per person ({selectedCur.symbol})</label>
               <button onClick={()=>setForm(f=>({...f,personal:Object.fromEntries(members.map(m=>[m.id,+(total/members.length).toFixed(2)]))}))}
                 style={{fontSize:10,padding:"3px 10px",borderRadius:5,border:"1px solid #BBB",background:"#F9F6F1",cursor:"pointer",fontWeight:600,color:"#444"}}>
                 Split equally
@@ -454,7 +461,7 @@ function AddGroupModal({members,onAdd,onClose}){
             ))}
             {total>0&&!balanced&&(
               <div style={{fontSize:11,color:"#E07020",fontWeight:600,marginTop:4,padding:"6px 8px",background:"#FFF8F0",borderRadius:6}}>
-                ⚠ Shares sum {fmt(sharesSum)} · diff {fmt(total-sharesSum)}
+                ⚠ Shares sum {fmtSel(sharesSum)} · diff {fmtSel(total-sharesSum)}
               </div>
             )}
             {total>0&&balanced&&(
@@ -465,7 +472,7 @@ function AddGroupModal({members,onAdd,onClose}){
 
         <button onClick={submit} style={{width:"100%",padding:"10px",borderRadius:8,border:"none",
           background:form.label&&form.total?"#2C2C2C":"#AAA",color:"#FFF",fontSize:13,fontWeight:700,cursor:"pointer"}}>
-          Add Group
+          {isEdit?"Save Changes":"Add Group"}
         </button>
       </div>
     </div>
@@ -561,8 +568,8 @@ function TripSettingsModal({tripName,members,onSave,onClose}){
   );
 }
 
-// ─── MAIN APP ─────────────────────────────────────────────────────────────────
-function ExistingDebtsModal({members,debts,onSave,onClose}){
+// ─── EXISTING DEBTS MODAL ─────────────────────────────────────────────────────
+function ExistingDebtsModal({members,debts,baseCurrencySymbol="₹",onSave,onClose}){
   const [rows,setRows]=useState(
     debts.length
       ? debts.map(d=>({id:d.id||("d"+Date.now()+Math.random()),from:d.from,to:d.to,amount:d.amount}))
@@ -601,7 +608,7 @@ function ExistingDebtsModal({members,debts,onSave,onClose}){
           <button onClick={onClose} style={{border:"none",background:"none",fontSize:18,cursor:"pointer",color:"#777"}}>✕</button>
         </div>
         <div style={{fontSize:11,color:"#666",marginBottom:10}}>
-          Add debts like "A owes B". These will be included in final settlement.
+          Add debts like "A owes B". These will be included in final settlement (amounts in base currency).
         </div>
 
         {rows.map((row,idx)=>(
@@ -619,7 +626,7 @@ function ExistingDebtsModal({members,debts,onSave,onClose}){
               </select>
             </div>
             <div>
-              <label style={{fontSize:10,color:"#666",fontWeight:600,display:"block",marginBottom:3}}>Amount (₹)</label>
+              <label style={{fontSize:10,color:"#666",fontWeight:600,display:"block",marginBottom:3}}>Amount ({baseCurrencySymbol})</label>
               <input type="number" value={row.amount} onChange={e=>updateRow(row.id,{amount:e.target.value})} style={{width:"100%",padding:"6px 8px",borderRadius:6,border:"1px solid #BBB",fontSize:12,boxSizing:"border-box"}}/>
             </div>
             <button onClick={()=>removeRow(row.id)} title={`Remove debt ${idx+1}`} style={{width:26,height:26,border:"none",borderRadius:"50%",background:"#FEE",color:"#C44",cursor:"pointer",fontSize:14,lineHeight:1,padding:0}}>×</button>
@@ -628,7 +635,7 @@ function ExistingDebtsModal({members,debts,onSave,onClose}){
 
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:2,marginBottom:14}}>
           <button onClick={addRow} style={{padding:"6px 12px",borderRadius:7,border:"1px solid #E8E4DE",background:"#FFF",color:"#333",fontSize:12,fontWeight:600,cursor:"pointer"}}>+ Add debt</button>
-          <div style={{fontSize:12,color:"#444",fontWeight:700}}>Total debt: {fmt(total)}</div>
+          <div style={{fontSize:12,color:"#444",fontWeight:700}}>Total debt: {fmt(total, baseCurrencySymbol)}</div>
         </div>
 
         <button onClick={save} style={{width:"100%",padding:"10px",borderRadius:8,border:"none",background:"#2C2C2C",color:"#FFF",fontSize:13,fontWeight:700,cursor:"pointer"}}>
@@ -666,21 +673,189 @@ function ResetDataModal({onClose,onConfirm}){
   );
 }
 
+// ─── CURRENCY MODAL ───────────────────────────────────────────────────────────
+function CurrencyModal({currencies,groups,onSave,onClose,isDark=false}){
+  const [list,setList]=useState(cloneData(currencies));
+  const [addCode,setAddCode]=useState("");
+  const [addRate,setAddRate]=useState("");
+
+  const base = list.find(c=>c.isBase) || list[0];
+  const usedCodes = new Set(groups.map(g=>g.currency).filter(Boolean));
+  const availableCommon = COMMON_CURRENCIES.filter(c=>!list.find(l=>l.code===c.code));
+
+  function setBase(code){
+    setList(l=>l.map(c=>({...c,isBase:c.code===code,rate:c.code===code?1:c.rate})));
+  }
+  function updateRate(code,rate){
+    setList(l=>l.map(c=>c.code===code?{...c,rate:parseFloat(rate)||0}:c));
+  }
+  function removeCurrency(code){
+    setList(l=>l.filter(c=>c.code!==code));
+  }
+  function addCurrency(){
+    if(!addCode||!addRate) return;
+    if(list.find(c=>c.code===addCode)) return;
+    const common=COMMON_CURRENCIES.find(c=>c.code===addCode);
+    const rate=parseFloat(addRate)||1;
+    if(common){
+      setList(l=>[...l,{...common,rate,isBase:false}]);
+    } else {
+      setList(l=>[...l,{code:addCode,name:addCode,symbol:addCode,rate,isBase:false}]);
+    }
+    setAddCode(""); setAddRate("");
+  }
+
+  const card  = isDark?"#1F1F1F":"#FFF";
+  const rowBg = isDark?"#252525":"#F9F6F1";
+  const rowBdr= isDark?"1px solid #3A3A3A":"1px solid #E8E4DE";
+  const txt   = isDark?"#EAEAEA":"#1A1A1A";
+  const muted = isDark?"#BEBEBE":"#666";
+  const inpBdr= isDark?"1px solid #444":"1px solid #BBB";
+  const inpBg = isDark?"#1A1A1A":"#FFF";
+
+  return(
+    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.45)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
+      <div style={{background:card,borderRadius:14,padding:24,width:480,maxHeight:"88vh",overflowY:"auto",boxShadow:"0 20px 60px rgba(0,0,0,0.2)"}}>
+
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+          <h3 style={{margin:0,fontSize:15,fontWeight:800,fontFamily:"'Nunito',sans-serif",color:txt}}>Currencies</h3>
+          <button onClick={onClose} style={{border:"none",background:"none",fontSize:18,cursor:"pointer",color:muted,lineHeight:1}}>✕</button>
+        </div>
+        <div style={{fontSize:11,color:muted,marginBottom:16,lineHeight:1.5}}>
+          Set a base currency and add foreign currencies with exchange rates. All expense details are displayed in the base currency.
+        </div>
+
+        {/* Currency list */}
+        {list.map(c=>(
+          <div key={c.code} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 12px",borderRadius:8,
+            background:c.isBase?(isDark?"#1A2A1A":"#F0FAF3"):rowBg,
+            border:c.isBase?(isDark?"1px solid #3A6040":"1px solid #B8E0C0"):rowBdr,
+            marginBottom:8}}>
+            <div style={{width:38,height:38,borderRadius:8,
+              background:c.isBase?"#2A8C4A18":"#3C7DC118",
+              display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+              <span style={{fontSize:17,fontWeight:800,color:c.isBase?"#2A8C4A":"#3C7DC1"}}>{c.symbol}</span>
+            </div>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:c.isBase?0:4}}>
+                <span style={{fontSize:13,fontWeight:700,color:txt}}>{c.code}</span>
+                <span style={{fontSize:11,color:muted,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{c.name}</span>
+                {c.isBase&&<span style={{fontSize:9,fontWeight:700,color:"#2A8C4A",background:"#E8F7ED",border:"1px solid #B8E0C0",borderRadius:999,padding:"1px 7px",flexShrink:0}}>BASE</span>}
+              </div>
+              {!c.isBase&&(
+                <div style={{display:"flex",alignItems:"center",gap:6}}>
+                  <span style={{fontSize:10,color:muted,whiteSpace:"nowrap"}}>1 {c.code} =</span>
+                  <input
+                    type="number"
+                    value={c.rate}
+                    onChange={e=>updateRate(c.code,e.target.value)}
+                    style={{width:84,padding:"3px 7px",borderRadius:5,border:inpBdr,fontSize:12,fontWeight:700,background:inpBg,color:txt,textAlign:"right"}}
+                  />
+                  <span style={{fontSize:10,color:muted,whiteSpace:"nowrap"}}>{base?.symbol} {base?.code}</span>
+                </div>
+              )}
+            </div>
+            <div style={{display:"flex",gap:6,flexShrink:0}}>
+              {!c.isBase&&(
+                <button onClick={()=>setBase(c.code)} style={{padding:"4px 8px",borderRadius:6,border:"1px solid #3C7DC155",background:"#F0F6FF",color:"#3C7DC1",fontSize:10,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap"}}>
+                  Set Base
+                </button>
+              )}
+              {!c.isBase&&(
+                <button
+                  onClick={()=>removeCurrency(c.code)}
+                  disabled={usedCodes.has(c.code)}
+                  title={usedCodes.has(c.code)?"Used in groups — remove those groups first":"Remove"}
+                  style={{width:26,height:26,border:"none",borderRadius:"50%",
+                    background:usedCodes.has(c.code)?"#EEE":"#FEE",
+                    color:usedCodes.has(c.code)?"#AAA":"#C44",
+                    cursor:usedCodes.has(c.code)?"not-allowed":"pointer",
+                    fontSize:14,lineHeight:1,padding:0,display:"flex",alignItems:"center",justifyContent:"center"}}
+                >×</button>
+              )}
+            </div>
+          </div>
+        ))}
+
+        {/* Add currency */}
+        <div style={{marginTop:14,padding:"14px",borderRadius:8,background:isDark?"#181818":rowBg,border:rowBdr}}>
+          <div style={{fontSize:10,color:muted,fontWeight:700,textTransform:"uppercase",letterSpacing:0.5,marginBottom:10}}>Add Currency</div>
+          <div style={{display:"flex",gap:8,alignItems:"flex-end"}}>
+            <div style={{flex:1}}>
+              <label style={{fontSize:10,color:muted,fontWeight:600,display:"block",marginBottom:3}}>Currency</label>
+              <select
+                value={addCode}
+                onChange={e=>setAddCode(e.target.value)}
+                style={{width:"100%",padding:"6px 8px",borderRadius:6,border:inpBdr,fontSize:12,boxSizing:"border-box",background:inpBg,color:txt}}
+              >
+                <option value="">Select…</option>
+                {availableCommon.map(c=>(
+                  <option key={c.code} value={c.code}>{c.code} — {c.name} ({c.symbol})</option>
+                ))}
+              </select>
+            </div>
+            <div style={{width:110}}>
+              <label style={{fontSize:10,color:muted,fontWeight:600,display:"block",marginBottom:3}}>
+                1 {addCode||"CCY"} = {base?.symbol}
+              </label>
+              <input
+                type="number"
+                placeholder="rate"
+                value={addRate}
+                onChange={e=>setAddRate(e.target.value)}
+                style={{width:"100%",padding:"6px 8px",borderRadius:6,border:inpBdr,fontSize:12,boxSizing:"border-box",background:inpBg,color:txt}}
+              />
+            </div>
+            <button
+              onClick={addCurrency}
+              disabled={!addCode||!addRate}
+              style={{padding:"6px 14px",borderRadius:6,border:"none",
+                background:addCode&&addRate?"#2C2C2C":"#BBB",
+                color:"#FFF",fontSize:12,fontWeight:700,
+                cursor:addCode&&addRate?"pointer":"not-allowed",
+                flexShrink:0,height:32,marginBottom:1}}
+            >Add</button>
+          </div>
+        </div>
+
+        <button onClick={()=>onSave(list)} style={{width:"100%",padding:"10px",borderRadius:8,border:"none",background:"#2C2C2C",color:"#FFF",fontSize:13,fontWeight:700,cursor:"pointer",marginTop:16}}>
+          Save Currencies
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ─── MAIN APP ─────────────────────────────────────────────────────────────────
 export default function TripSplitter(){
   const [tripName,setTripName]         = useState(DATASET_1_TRIP_NAME);
   const [members,setMembers]           = useState(cloneData(DATASET_1_MEMBERS));
   const [groups,setGroups]             = useState(cloneData(DATASET_1_GROUPS));
   const [existingDebts,setExistingDebts] = useState(cloneData(DATASET_1_EXISTING_DEBTS));
+  const [currencies,setCurrencies]     = useState(cloneData(DEFAULT_CURRENCIES));
   const [showAdd,setShowAdd]           = useState(false);
+  const [editGroup,setEditGroup]       = useState(null);
   const [showSettings,setShowSettings] = useState(false);
   const [showExistingDebts,setShowExistingDebts] = useState(false);
+  const [showCurrencies,setShowCurrencies] = useState(false);
   const [themeMode,setThemeMode]       = useState("light");
   const [showReset,setShowReset]       = useState(false);
-  const [history,setHistory]           = useState([{tripName:DATASET_1_TRIP_NAME,members:cloneData(DATASET_1_MEMBERS),groups:cloneData(DATASET_1_GROUPS),existingDebts:cloneData(DATASET_1_EXISTING_DEBTS)}]);
+  const [history,setHistory]           = useState([{tripName:DATASET_1_TRIP_NAME,members:cloneData(DATASET_1_MEMBERS),groups:cloneData(DATASET_1_GROUPS),existingDebts:cloneData(DATASET_1_EXISTING_DEBTS),currencies:cloneData(DEFAULT_CURRENCIES)}]);
   const [historyIdx,setHistoryIdx]     = useState(0);
 
-  const balances   = computeBalances(members,groups,existingDebts);
-  const grandTotal = groups.reduce((s,g)=>s+g.total,0);
+  const baseCurrency = currencies.find(c=>c.isBase) || currencies[0] || {code:"INR",symbol:"₹",rate:1,isBase:true};
+  const fmtBase      = n => fmt(n, baseCurrency.symbol);
+  const fmtBaseShort = n => fmtShort(n, baseCurrency.symbol);
+
+  const toBase = (amount, code) => {
+    if (!code || !currencies.length) return amount;
+    const c = currencies.find(x=>x.code===code);
+    if (!c || c.isBase) return amount;
+    return amount * c.rate;
+  };
+
+  const balances   = computeBalances(members,groups,existingDebts,currencies);
+  const grandTotal = groups.reduce((s,g)=>s+toBase(g.total,g.currency),0);
   const totalSettlement = balances.transactions.reduce((s,t)=>s+t.amount,0);
   const hasPeople  = members.some(m=>(m.name||"").trim().length>0);
   const visibleMembers = hasPeople ? members.filter(m=>(m.name||"").trim().length>0) : [];
@@ -709,36 +884,40 @@ export default function TripSplitter(){
     if(historyIdx<=0) return;
     const snap=history[historyIdx-1];
     setHistoryIdx(historyIdx-1);
-    setTripName(snap.tripName); setMembers(snap.members); setGroups(snap.groups); setExistingDebts(snap.existingDebts);
+    setTripName(snap.tripName); setMembers(snap.members); setGroups(snap.groups);
+    setExistingDebts(snap.existingDebts); setCurrencies(snap.currencies||cloneData(DEFAULT_CURRENCIES));
   }
   function redo(){
     if(historyIdx>=history.length-1) return;
     const snap=history[historyIdx+1];
     setHistoryIdx(historyIdx+1);
-    setTripName(snap.tripName); setMembers(snap.members); setGroups(snap.groups); setExistingDebts(snap.existingDebts);
+    setTripName(snap.tripName); setMembers(snap.members); setGroups(snap.groups);
+    setExistingDebts(snap.existingDebts); setCurrencies(snap.currencies||cloneData(DEFAULT_CURRENCIES));
   }
 
   function updateGroup(u){
     const g2=groups.map(g=>g.id===u.id?u:g);
-    setGroups(g2); pushHistory({tripName,members,groups:g2,existingDebts});
+    setGroups(g2); pushHistory({tripName,members,groups:g2,existingDebts,currencies});
   }
   function deleteGroup(id){
     const g2=groups.filter(g=>g.id!==id);
-    setGroups(g2); pushHistory({tripName,members,groups:g2,existingDebts});
+    setGroups(g2); pushHistory({tripName,members,groups:g2,existingDebts,currencies});
   }
   function addGroup(g){
     const g2=[...groups,g];
-    setGroups(g2); pushHistory({tripName,members,groups:g2,existingDebts});
+    setGroups(g2); pushHistory({tripName,members,groups:g2,existingDebts,currencies});
   }
   function loadDataset1(){
-    const snap={tripName:DATASET_1_TRIP_NAME,members:cloneData(DATASET_1_MEMBERS),groups:cloneData(DATASET_1_GROUPS),existingDebts:cloneData(DATASET_1_EXISTING_DEBTS)};
-    setTripName(snap.tripName); setMembers(snap.members); setGroups(snap.groups); setExistingDebts(snap.existingDebts);
+    const snap={tripName:DATASET_1_TRIP_NAME,members:cloneData(DATASET_1_MEMBERS),groups:cloneData(DATASET_1_GROUPS),existingDebts:cloneData(DATASET_1_EXISTING_DEBTS),currencies:cloneData(DEFAULT_CURRENCIES)};
+    setTripName(snap.tripName); setMembers(snap.members); setGroups(snap.groups);
+    setExistingDebts(snap.existingDebts); setCurrencies(snap.currencies);
     pushHistory(snap);
   }
   function resetAllData(){
     const emptyMembers=DATASET_1_MEMBERS.map(m=>({...m,name:"",initials:"--"}));
-    const snap={tripName:"New Trip",members:emptyMembers,groups:[],existingDebts:[]};
-    setTripName(snap.tripName); setMembers(snap.members); setGroups(snap.groups); setExistingDebts(snap.existingDebts);
+    const snap={tripName:"New Trip",members:emptyMembers,groups:[],existingDebts:[],currencies:cloneData(DEFAULT_CURRENCIES)};
+    setTripName(snap.tripName); setMembers(snap.members); setGroups(snap.groups);
+    setExistingDebts(snap.existingDebts); setCurrencies(snap.currencies);
     setHistory([snap]); setHistoryIdx(0); setShowReset(false);
   }
   function saveSettings(name,people){
@@ -746,15 +925,21 @@ export default function TripSplitter(){
     const validIds=new Set(people.map(p=>p.id));
     const newDebts=existingDebts.filter(d=>validIds.has(d.from)&&validIds.has(d.to)&&d.from!==d.to&&d.amount>0);
     setExistingDebts(newDebts);
-    pushHistory({tripName:name,members:people,groups,existingDebts:newDebts});
+    pushHistory({tripName:name,members:people,groups,existingDebts:newDebts,currencies});
     setShowSettings(false);
   }
   function handleSaveDebts(newDebts){
     setExistingDebts(newDebts);
-    pushHistory({tripName,members,groups,existingDebts:newDebts});
+    pushHistory({tripName,members,groups,existingDebts:newDebts,currencies});
+  }
+  function handleSaveCurrencies(newCurrencies){
+    setCurrencies(newCurrencies);
+    pushHistory({tripName,members,groups,existingDebts,currencies:newCurrencies});
+    setShowCurrencies(false);
   }
 
   function handlePrint(){
+    const sym = baseCurrency.symbol;
     const style=`<style>
       @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@700;800&family=Inter:wght@400;600&display=swap');
       *{box-sizing:border-box;margin:0;padding:0}
@@ -768,14 +953,14 @@ export default function TripSplitter(){
       .tot td{font-weight:700;background:#F5F2EC}
       .txn{display:flex;justify-content:space-between;padding:8px 12px;background:#F9F6F0;border-radius:6px;margin-bottom:6px}
     </style>`;
-    const rows=groups.map(g=>{const p=members.find(m=>m.id===g.paidBy);return`<tr><td>${g.emoji} ${g.label}</td><td>${p?.name}</td>${members.map(m=>`<td style="text-align:right">${(g.shares[m.id]||0)>0?fmt(g.shares[m.id]):"—"}</td>`).join("")}<td style="text-align:right;font-weight:700">${fmt(g.total)}</td></tr>`;}).join("");
-    const balRow=`<tr class="tot"><td colspan="2">TOTAL OWED</td>${members.map(m=>`<td style="text-align:right">${fmt(balances.owed[m.id])}</td>`).join("")}<td style="text-align:right">${fmt(grandTotal)}</td></tr>`;
-    const txns=balances.transactions.map(t=>{const f=members.find(m=>m.id===t.from);const to=members.find(m=>m.id===t.to);return`<div class="txn"><span>${f?.name} → ${to?.name}</span><span style="font-weight:700">${fmt(t.amount)}</span></div>`;}).join("");
+    const rows=groups.map(g=>{const p=members.find(m=>m.id===g.paidBy);const gCur=currencies.find(c=>c.code===g.currency)||baseCurrency;const gTotal=toBase(g.total,g.currency);return`<tr><td>${g.emoji} ${g.label}${!gCur.isBase?` <small style="color:#888">(${g.total}${gCur.symbol})</small>`:""}</td><td>${p?.name}</td>${members.map(m=>`<td style="text-align:right">${(g.shares[m.id]||0)>0?fmt(toBase(g.shares[m.id],g.currency),sym):"—"}</td>`).join("")}<td style="text-align:right;font-weight:700">${fmt(gTotal,sym)}</td></tr>`;}).join("");
+    const balRow=`<tr class="tot"><td colspan="2">TOTAL OWED</td>${members.map(m=>`<td style="text-align:right">${fmt(balances.owed[m.id],sym)}</td>`).join("")}<td style="text-align:right">${fmt(grandTotal,sym)}</td></tr>`;
+    const txns=balances.transactions.map(t=>{const f=members.find(m=>m.id===t.from);const to=members.find(m=>m.id===t.to);return`<div class="txn"><span>${f?.name} → ${to?.name}</span><span style="font-weight:700">${fmt(t.amount,sym)}</span></div>`;}).join("");
     const html=`<!DOCTYPE html><html><head><title>${tripName}</title>${style}</head><body>
       <h1>✈️ ${tripName}</h1>
-      <div class="sub">Generated ${new Date().toLocaleDateString("en-IN",{day:"numeric",month:"long",year:"numeric"})} · Grand Total ${fmt(grandTotal)}</div>
+      <div class="sub">Generated ${new Date().toLocaleDateString("en-IN",{day:"numeric",month:"long",year:"numeric"})} · Grand Total ${fmt(grandTotal,sym)} (${baseCurrency.code})</div>
       <div class="sec">Expense Breakdown</div>
-      <table><thead><tr><th>Group</th><th>Paid By</th>${members.map(m=>`<th>${m.name}</th>`).join("")}<th>Total</th></tr></thead>
+      <table><thead><tr><th>Group</th><th>Paid By</th>${members.map(m=>`<th>${m.name}</th>`).join("")}<th>Total (${baseCurrency.code})</th></tr></thead>
       <tbody>${rows}${balRow}</tbody></table>
       <div class="sec">Final Settlement</div>${txns}
     </body></html>`;
@@ -818,7 +1003,6 @@ export default function TripSplitter(){
       `}</style>
 
       {/* ── TOP BAR ──────────────────────────────────────────────────────────── */}
-      {/* Header */}
       <div style={{background:theme.topBg,borderBottom:isDark?"none":`1px solid #DCD6CC`,boxShadow:isDark?"none":"0 8px 18px rgba(0,0,0,0.12)",padding:"0 20px",height:62,display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,zIndex:200}}>
         <div style={{display:"flex",alignItems:"center",gap:14,minWidth:0}}>
           <div style={{display:"flex",alignItems:"center",gap:9,paddingRight:8,borderRight:`1px solid ${theme.topChipBorder}`}}>
@@ -831,6 +1015,7 @@ export default function TripSplitter(){
             <span style={{fontSize:12,fontWeight:700,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",maxWidth:140}}>{tripName}</span>
             <span style={{display:"inline-flex",alignItems:"center",justifyContent:"center",color:theme.topMuted}}><svg width="11" height="11" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M4 20H8L18.5 9.5C19.3 8.7 19.3 7.3 18.5 6.5L17.5 5.5C16.7 4.7 15.3 4.7 14.5 5.5L4 16V20Z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg></span>
           </button>
+          {/* Members */}
           <div style={{display:"flex",alignItems:"center",marginLeft:2}}>
             {members.map((m,idx)=>(
               <span key={m.id} style={{marginLeft:idx===0?0:-7}}>
@@ -841,6 +1026,16 @@ export default function TripSplitter(){
               +
             </button>
           </div>
+          {/* Currency button */}
+          <button
+            onClick={()=>setShowCurrencies(true)}
+            title="Manage currencies"
+            style={{marginLeft:4,display:"flex",alignItems:"center",gap:5,padding:"5px 11px",borderRadius:999,border:`1px solid ${theme.topChipBorder}`,background:theme.topChipBg,color:theme.topText,cursor:"pointer",flexShrink:0}}
+          >
+            <span style={{fontSize:13,fontWeight:800,lineHeight:1}}>{baseCurrency.symbol}</span>
+            <span style={{fontSize:11,fontWeight:700,color:theme.topText}}>{baseCurrency.code}</span>
+            {currencies.length>1&&<span style={{fontSize:9,fontWeight:600,color:theme.topMuted,background:theme.topChipBorder,borderRadius:999,padding:"1px 5px"}}>+{currencies.length-1}</span>}
+          </button>
         </div>
 
         <div style={{display:"flex",alignItems:"center",gap:10}}>
@@ -861,12 +1056,12 @@ export default function TripSplitter(){
             Reset
           </button>
         </div>
-        </div>
-      
+      </div>
+
       {/* ── THREE COLUMNS ──────────────────────────────────────────────────────── */}
       <div style={{display:"flex",height:"calc(100vh - 66px)",overflow:"hidden",paddingTop:0}}>
 
-                {/* COL 1: Groups - 50% */}
+        {/* COL 1: Groups - 50% */}
         <div style={{position:"relative",zIndex:3,width:"50%",marginRight:-8,display:"flex",flexDirection:"column",background:theme.panelBg,boxShadow:isDark?"4px 0 12px rgba(0,0,0,0.3)":"4px 0 12px rgba(0,0,0,0.10)"}}>
           <div style={{padding:"14px 16px 10px",borderBottom:`1px solid ${theme.border}`,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
             <div>
@@ -908,7 +1103,7 @@ export default function TripSplitter(){
               </div>
             )}
             {groups.map(g=>(
-              <GroupCard key={g.id} group={g} members={members} onUpdate={updateGroup} onDelete={deleteGroup} isDark={isDark}/>
+              <GroupCard key={g.id} group={g} members={members} currencies={currencies} onEdit={setEditGroup} onDelete={deleteGroup} isDark={isDark}/>
             ))}
             <div style={{background:theme.panelBg,border:`1px solid ${theme.border}`,borderRadius:8,padding:"10px 14px",marginBottom:8}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
@@ -924,23 +1119,20 @@ export default function TripSplitter(){
                   {existingDebts.map(d=>(
                     <div key={d.id} style={{display:"flex",justifyContent:"space-between",gap:8,fontSize:11,marginBottom:4,color:theme.muted}}>
                       <span>{members.find(m=>m.id===d.from)?.name||d.from} owes {members.find(m=>m.id===d.to)?.name||d.to}</span>
-                      <span style={{fontWeight:700,color:theme.text}}>{fmt(d.amount)}</span>
+                      <span style={{fontWeight:700,color:theme.text}}>{fmtBase(d.amount)}</span>
                     </div>
                   ))}
                   <div style={{fontSize:12,fontWeight:800,color:theme.text,marginTop:4}}>
-                    Total: {fmt(existingDebts.reduce((s,d)=>s+(d.amount||0),0))}
+                    Total: {fmtBase(existingDebts.reduce((s,d)=>s+(d.amount||0),0))}
                   </div>
                 </>
               )}
             </div>
           </div>
-        
-
         </div>
 
-        {/* COL 2: Settlement — 25% (swapped) */}
+        {/* COL 2: Settlement — 25% */}
         <div className="col2" style={{order:3,position:"relative",zIndex:1,width:"25%",display:"flex",flexDirection:"column",background:isDark?"#1F1F1F":"#FFF"}}>
-          {/* Column header */}
           <div style={{padding:"14px 16px 10px 24px",borderBottom:`1px solid ${theme.border}`}}>
             <div style={{fontFamily:"'Nunito',sans-serif",fontSize:14,fontWeight:800,color:theme.text,display:"flex",alignItems:"center",gap:8}}>
               <span style={{display:"inline-flex",alignItems:"center",justifyContent:"center",width:20,height:20,borderRadius:4,background:isDark?"#2C2C2C":"#EDEDEB",border:isDark?"1px solid #3A3A3A":"1px solid #D8D4CE",fontSize:10,fontWeight:800,color:isDark?"#888":"#777",flexShrink:0}}>⇄</span>
@@ -971,29 +1163,27 @@ export default function TripSplitter(){
                       <div style={{fontSize:12,fontWeight:600,color:theme.text,marginBottom:8}}>
                         {f?.name.split(" ")[0]} → {to?.name.split(" ")[0]}
                       </div>
-                      <div style={{fontSize:16,fontWeight:800,color:"#C17D3C",textAlign:"right"}}>{fmt(t.amount)}</div>
+                      <div style={{fontSize:16,fontWeight:800,color:"#C17D3C",textAlign:"right"}}>{fmtBase(t.amount)}</div>
                     </div>
                   );
                 })}
                 <div style={{marginTop:6,padding:"10px 11px",borderRadius:10,background:isDark?"#242424":"#FFFFFF",border:`1px solid ${theme.border}`}}>
                   <div style={{fontSize:11,color:theme.muted,marginBottom:3}}>All {visibleMembers.length} members settle with <strong style={{color:theme.text}}>{balances.transactions.length}</strong> transfer{balances.transactions.length!==1?"s":""}</div>
-                  <div style={{fontSize:12,fontWeight:700,color:theme.text}}>Total settlement: {fmt(totalSettlement)}</div>
+                  <div style={{fontSize:12,fontWeight:700,color:theme.text}}>Total settlement: {fmtBase(totalSettlement)}</div>
                 </div>
               </>
             )}
           </div>
-        
-
         </div>
 
-        {/* COL 3: Trip overview — 25% (swapped) */}
+        {/* COL 3: Trip overview — 25% */}
         <div className="col3" style={{order:2,position:"relative",zIndex:2,width:"25%",marginRight:-8,display:"flex",flexDirection:"column",background:isDark?theme.panelBg:"#FFF",boxShadow:isDark?"4px 0 10px rgba(0,0,0,0.25)":"4px 0 10px rgba(0,0,0,0.08)"}}>
           <div style={{padding:"14px 16px 10px 24px",borderBottom:`1px solid ${theme.border}`}}>
             <div style={{fontFamily:"'Nunito',sans-serif",fontSize:14,fontWeight:800,color:theme.text,display:"flex",alignItems:"center",gap:8}}>
               <span style={{display:"inline-flex",alignItems:"center",justifyContent:"center",width:20,height:20,borderRadius:4,background:isDark?"#2C2C2C":"#EDEDEB",border:isDark?"1px solid #3A3A3A":"1px solid #D8D4CE",fontSize:11,fontWeight:800,color:isDark?"#888":"#777",flexShrink:0}}>◉</span>
               Overview
             </div>
-            <div style={{fontSize:11,color:theme.muted,marginTop:1}}>Spend per person</div>
+            <div style={{fontSize:11,color:theme.muted,marginTop:1}}>Spend per person · {baseCurrency.code}</div>
           </div>
           <div style={{flex:1,overflowY:"auto",padding:"14px 16px 14px 24px"}}>
             {!hasPeople&&(
@@ -1009,19 +1199,24 @@ export default function TripSplitter(){
               </div>
             )}
 
-            {/* Grand total — subtle, readable */}
+            {/* Grand total */}
             <div style={{marginBottom:18,padding:"12px 14px",borderRadius:8,background:theme.accentBg,border:`1px solid ${theme.accentBorder}`}}>
-              <div style={{fontSize:10,color:theme.muted,fontWeight:600,textTransform:"uppercase",letterSpacing:0.5,marginBottom:6}}>Grand total</div>
+              <div style={{fontSize:10,color:theme.muted,fontWeight:600,textTransform:"uppercase",letterSpacing:0.5,marginBottom:6}}>Grand total · {baseCurrency.code}</div>
               <div style={{display:"flex",alignItems:"baseline",gap:6}}>
-                <span style={{fontFamily:"'Nunito',sans-serif",fontSize:22,fontWeight:800,color:theme.text,lineHeight:1}}>{fmt(grandTotal)}</span>
+                <span style={{fontFamily:"'Nunito',sans-serif",fontSize:22,fontWeight:800,color:theme.text,lineHeight:1}}>{fmtBase(grandTotal)}</span>
               </div>
               <div style={{fontSize:11,color:theme.muted,marginTop:4}}>{groups.length} expense groups · {visibleMembers.length} people</div>
+              {currencies.length>1&&(
+                <div style={{fontSize:10,color:theme.muted,marginTop:3}}>
+                  {currencies.filter(c=>!c.isBase).map(c=>`1 ${c.code} = ${c.rate} ${baseCurrency.code}`).join(" · ")}
+                </div>
+              )}
             </div>
 
             {/* Share bars */}
             <div style={{marginBottom:18}}>
               <div style={{fontSize:10,fontWeight:600,color:theme.muted,letterSpacing:0.5,marginBottom:10,textTransform:"uppercase"}}>Each person's share</div>
-              {visibleMembers.map(m=><MemberBar key={m.id} member={m} value={balances.owed[m.id]} max={maxSpend} textColor={theme.text} valueColor={theme.text} trackColor={isDark?"#3A3A3A":"#F0EDE8"}/>)}
+              {visibleMembers.map(m=><MemberBar key={m.id} member={m} value={balances.owed[m.id]} max={maxSpend} textColor={theme.text} valueColor={theme.text} trackColor={isDark?"#3A3A3A":"#F0EDE8"} symbol={baseCurrency.symbol}/>)}
             </div>
 
             {/* Paid vs owed rows */}
@@ -1038,7 +1233,7 @@ export default function TripSplitter(){
                       <div style={{fontSize:10,color:isPos?"#2A7A40":isNeg?"#B83010":theme.muted}}>{isPos?"receives":isNeg?"pays":"settled"}</div>
                     </div>
                     <span style={{fontSize:12,fontWeight:700,color:isPos?"#2A7A40":isNeg?"#B83010":theme.muted}}>
-                      {isPos?"+":isNeg?"-":""}{fmtShort(Math.abs(net))}
+                      {isPos?"+":isNeg?"-":""}{fmtBaseShort(Math.abs(net))}
                     </span>
                   </div>
                 );
@@ -1049,34 +1244,12 @@ export default function TripSplitter(){
         </div>
       </div>
 
-      {showAdd&&<AddGroupModal members={members} onAdd={addGroup} onClose={()=>setShowAdd(false)}/>}
+      {showAdd&&<AddGroupModal members={members} currencies={currencies} onAdd={addGroup} onClose={()=>setShowAdd(false)}/>}
+      {editGroup&&<AddGroupModal members={members} currencies={currencies} initialGroup={editGroup} onAdd={g=>{updateGroup(g);setEditGroup(null);}} onClose={()=>setEditGroup(null)}/>}
       {showSettings&&<TripSettingsModal tripName={tripName} members={members} onSave={saveSettings} onClose={()=>setShowSettings(false)}/>}
-      {showExistingDebts&&<ExistingDebtsModal members={members} debts={existingDebts} onSave={handleSaveDebts} onClose={()=>setShowExistingDebts(false)}/>}
+      {showExistingDebts&&<ExistingDebtsModal members={members} debts={existingDebts} baseCurrencySymbol={baseCurrency.symbol} onSave={handleSaveDebts} onClose={()=>setShowExistingDebts(false)}/>}
+      {showCurrencies&&<CurrencyModal currencies={currencies} groups={groups} onSave={handleSaveCurrencies} onClose={()=>setShowCurrencies(false)} isDark={isDark}/>}
       {showReset&&<ResetDataModal onClose={()=>setShowReset(false)} onConfirm={resetAllData}/>}
     </div>
   );
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
