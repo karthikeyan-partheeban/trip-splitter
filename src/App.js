@@ -1189,13 +1189,13 @@ export default function TripSplitter(){
             {!hasPeople&&(
               <div style={{marginBottom:12,padding:"12px 14px",borderRadius:8,background:theme.panelBg,border:`1px dashed ${theme.border}`}}>
                 <div style={{fontSize:12,fontWeight:700,color:theme.text,marginBottom:4}}>Overview is empty</div>
-                <div style={{fontSize:11,color:theme.muted,lineHeight:1.5}}>Add people first to unlock per-person share and paid-vs-owed insights.</div>
+                <div style={{fontSize:11,color:theme.muted,lineHeight:1.5}}>Add people first to unlock per-person share and net settlement insights.</div>
               </div>
             )}
             {hasPeople&&!hasAnyData&&(
               <div style={{marginBottom:12,padding:"12px 14px",borderRadius:8,background:theme.panelBg,border:`1px dashed ${theme.border}`}}>
                 <div style={{fontSize:12,fontWeight:700,color:theme.text,marginBottom:4}}>Overview is empty</div>
-                <div style={{fontSize:11,color:theme.muted,lineHeight:1.5}}>Add your first expense group to populate totals, per-person share, and paid-vs-owed cards here.</div>
+                <div style={{fontSize:11,color:theme.muted,lineHeight:1.5}}>Add your first expense group to populate totals, per-person share, and net settlement cards here.</div>
               </div>
             )}
 
@@ -1219,9 +1219,9 @@ export default function TripSplitter(){
               {visibleMembers.map(m=><MemberBar key={m.id} member={m} value={balances.owed[m.id]} max={maxSpend} textColor={theme.text} valueColor={theme.text} trackColor={isDark?"#3A3A3A":"#F0EDE8"} symbol={baseCurrency.symbol}/>)}
             </div>
 
-            {/* Paid vs owed rows */}
+            {/* Net settlement rows */}
             <div>
-              <div style={{fontSize:10,fontWeight:600,color:theme.muted,letterSpacing:0.5,marginBottom:8,textTransform:"uppercase"}}>Paid vs owed</div>
+              <div style={{fontSize:10,fontWeight:600,color:theme.muted,letterSpacing:0.5,marginBottom:8,textTransform:"uppercase"}}>Net settlement status</div>
               {visibleMembers.map(m=>{
                 const paid=balances.paid[m.id], owed=balances.owed[m.id], net=paid-owed;
                 const isPos=net>0.01, isNeg=net<-0.01;
