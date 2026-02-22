@@ -1067,7 +1067,10 @@ export default function TripSplitter(){
           <div style={{padding:"14px 16px 10px",borderBottom:`1px solid ${theme.border}`,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
             <div>
               <div style={{fontFamily:"'Nunito',sans-serif",fontSize:14,fontWeight:800,color:theme.text,display:"flex",alignItems:"center",gap:8}}>
-                <span style={{display:"inline-flex",alignItems:"center",justifyContent:"center",width:20,height:20,borderRadius:4,background:isDark?"#2C2C2C":"#EDEDEB",border:isDark?"1px solid #3A3A3A":"1px solid #D8D4CE",fontSize:11,fontWeight:800,color:isDark?"#888":"#777",flexShrink:0}}>∑</span>
+                <svg width="15" height="15" viewBox="0 0 15 15" fill="none" style={{flexShrink:0,color:theme.muted}} aria-hidden="true">
+                  <rect x="2" y="1.5" width="11" height="12" rx="1.5" stroke="currentColor" strokeWidth="1.3"/>
+                  <path d="M4.5 5h6M4.5 7.5h6M4.5 10h3.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+                </svg>
                 Expense Groups
               </div>
               <div style={{fontSize:11,color:theme.muted,marginTop:1}}>{groups.length} groups · click to expand</div>
@@ -1136,7 +1139,9 @@ export default function TripSplitter(){
         <div className="col2" style={{order:3,position:"relative",zIndex:1,width:"25%",display:"flex",flexDirection:"column",background:isDark?"#1F1F1F":"#FFF"}}>
           <div style={{padding:"14px 16px 10px 24px",borderBottom:`1px solid ${theme.border}`}}>
             <div style={{fontFamily:"'Nunito',sans-serif",fontSize:14,fontWeight:800,color:theme.text,display:"flex",alignItems:"center",gap:8}}>
-              <span style={{display:"inline-flex",alignItems:"center",justifyContent:"center",width:20,height:20,borderRadius:4,background:isDark?"#2C2C2C":"#EDEDEB",border:isDark?"1px solid #3A3A3A":"1px solid #D8D4CE",fontSize:10,fontWeight:800,color:isDark?"#888":"#777",flexShrink:0}}>⇄</span>
+              <svg width="15" height="15" viewBox="0 0 15 15" fill="none" style={{flexShrink:0,color:theme.muted}} aria-hidden="true">
+                <path d="M1.5 5h12M10.5 2l3 3-3 3M13.5 10h-12M4.5 7l-3 3 3 3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
               Balances
             </div>
             <div style={{fontSize:11,color:theme.muted,marginTop:1}}>Recommended settlement transfers</div>
@@ -1181,7 +1186,10 @@ export default function TripSplitter(){
         <div className="col3" style={{order:2,position:"relative",zIndex:2,width:"25%",marginRight:-8,display:"flex",flexDirection:"column",background:isDark?theme.panelBg:"#FFF",boxShadow:isDark?"4px 0 10px rgba(0,0,0,0.25)":"4px 0 10px rgba(0,0,0,0.08)"}}>
           <div style={{padding:"14px 16px 10px 24px",borderBottom:`1px solid ${theme.border}`}}>
             <div style={{fontFamily:"'Nunito',sans-serif",fontSize:14,fontWeight:800,color:theme.text,display:"flex",alignItems:"center",gap:8}}>
-              <span style={{display:"inline-flex",alignItems:"center",justifyContent:"center",width:20,height:20,borderRadius:4,background:isDark?"#2C2C2C":"#EDEDEB",border:isDark?"1px solid #3A3A3A":"1px solid #D8D4CE",fontSize:11,fontWeight:800,color:isDark?"#888":"#777",flexShrink:0}}>◉</span>
+              <svg width="15" height="15" viewBox="0 0 15 15" fill="none" style={{flexShrink:0,color:theme.muted}} aria-hidden="true">
+                <path d="M2 13V8.5M5 13V5M8 13V7M11 13V3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                <path d="M1 13.5h12.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+              </svg>
               Overview
             </div>
             <div style={{fontSize:11,color:theme.muted,marginTop:1}}>Spend per person · {baseCurrency.code}</div>
