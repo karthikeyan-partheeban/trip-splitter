@@ -56,6 +56,38 @@ function cloneData(data){
   return JSON.parse(JSON.stringify(data));
 }
 
+// ─── URL SHARE ENCODING ───────────────────────────────────────────────────────
+function encodeShareState(state) {
+  try {
+    const bytes = new TextEncoder().encode(JSON.stringify(state));
+    let bin = '';
+    bytes.forEach(b => { bin += String.fromCharCode(b); });
+    return btoa(bin);
+  } catch(e) { return null; }
+}
+
+function decodeShareState(encoded) {
+  try {
+    const bin = atob(encoded);
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    const state = JSON.parse(new TextDecoder().decode(bytes));
+    if (!state || !Array.isArray(state.members) || !Array.isArray(state.groups)) return null;
+    return state;
+  } catch(e) { return null; }
+}
+
+// Reads state encoded in URL hash on first page load; clears the hash afterwards
+const _sharedState = (() => {
+  try {
+    const hash = window.location.hash;
+    if (!hash.startsWith('#state=')) return null;
+    const state = decodeShareState(hash.slice(7));
+    if (state) window.history.replaceState(null, '', window.location.pathname + window.location.search);
+    return state;
+  } catch(e) { return null; }
+})();
+
 function computeBalances(members, groups, existingDebts=[], currencies=[]) {
   const toBase = (amount, code) => {
     if (!code || !currencies.length) return amount;
@@ -827,21 +859,122 @@ function CurrencyModal({currencies,groups,onSave,onClose,isDark=false}){
   );
 }
 
+// ─── SHARE MODAL ─────────────────────────────────────────────────────────────
+function ShareModal({tripName,members,groups,existingDebts,currencies,onClose,isDark=false}){
+  const [copied,setCopied] = useState(false);
+
+  const url = (() => {
+    const encoded = encodeShareState({tripName,members,groups,existingDebts,currencies});
+    if (!encoded) return '';
+    return `${window.location.origin}${window.location.pathname}#state=${encoded}`;
+  })();
+
+  function copy(){
+    navigator.clipboard.writeText(url).then(()=>{
+      setCopied(true);
+      setTimeout(()=>setCopied(false), 2500);
+    });
+  }
+
+  const card  = isDark ? "#1F1F1F" : "#FFF";
+  const txt   = isDark ? "#EAEAEA" : "#1A1A1A";
+  const muted = isDark ? "#BEBEBE" : "#666";
+  const rowBg = isDark ? "#252525" : "#F9F6F1";
+  const rowBdr= isDark ? "1px solid #3A3A3A" : "1px solid #E8E4DE";
+  const inpBg = isDark ? "#141414" : "#F5F3F0";
+  const inpBdr= isDark ? "1px solid #3A3A3A" : "1px solid #DDD";
+
+  return(
+    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.45)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
+      <div style={{background:card,borderRadius:14,padding:24,width:500,boxShadow:"0 20px 60px rgba(0,0,0,0.2)"}}>
+
+        {/* Header */}
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18}}>
+          <div style={{display:"flex",alignItems:"center",gap:10}}>
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none" style={{color:txt}} aria-hidden="true">
+              <circle cx="14" cy="3.5" r="2" stroke="currentColor" strokeWidth="1.4"/>
+              <circle cx="14" cy="14.5" r="2" stroke="currentColor" strokeWidth="1.4"/>
+              <circle cx="4"  cy="9"   r="2" stroke="currentColor" strokeWidth="1.4"/>
+              <path d="M5.9 8.1l6.2-3.6M5.9 9.9l6.2 3.6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+            </svg>
+            <h3 style={{margin:0,fontSize:15,fontWeight:800,fontFamily:"'Nunito',sans-serif",color:txt}}>Share Trip</h3>
+          </div>
+          <button onClick={onClose} style={{border:"none",background:"none",fontSize:18,cursor:"pointer",color:muted,lineHeight:1}}>✕</button>
+        </div>
+
+        {/* Trip summary chip */}
+        <div style={{marginBottom:18,padding:"10px 14px",borderRadius:8,background:rowBg,border:rowBdr}}>
+          <div style={{fontSize:13,fontWeight:700,color:txt,marginBottom:3}}>✈️  {tripName}</div>
+          <div style={{fontSize:11,color:muted}}>
+            {members.length} people · {groups.length} expense group{groups.length!==1?"s":""} · {currencies.length} currenc{currencies.length===1?"y":"ies"}
+          </div>
+        </div>
+
+        {/* URL row */}
+        <div style={{marginBottom:16}}>
+          <div style={{fontSize:10,color:muted,fontWeight:700,textTransform:"uppercase",letterSpacing:0.5,marginBottom:7}}>Shareable link</div>
+          <div style={{display:"flex",gap:8,alignItems:"stretch"}}>
+            <input
+              readOnly value={url}
+              onClick={e=>e.target.select()}
+              style={{flex:1,padding:"9px 11px",borderRadius:8,border:inpBdr,background:inpBg,
+                fontSize:11,color:muted,fontFamily:"monospace",
+                overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",
+                minWidth:0,cursor:"text"}}
+            />
+            <button
+              onClick={copy}
+              style={{padding:"0 18px",borderRadius:8,border:"none",
+                background:copied?"#2A8C4A":"#2C2C2C",
+                color:"#FFF",fontSize:12,fontWeight:700,cursor:"pointer",
+                flexShrink:0,transition:"background 0.2s",
+                display:"flex",alignItems:"center",gap:6}}
+            >
+              {copied
+                ? <><svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true"><path d="M2 6l3 3 5-5" stroke="#FFF" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg>Copied</>
+                : <><svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true"><rect x="4" y="1" width="7" height="8" rx="1" stroke="#FFF" strokeWidth="1.3"/><path d="M8 4H2a1 1 0 00-1 1v6a1 1 0 001 1h6a1 1 0 001-1V9" stroke="#FFF" strokeWidth="1.3" strokeLinecap="round"/></svg>Copy</>
+              }
+            </button>
+          </div>
+        </div>
+
+        {/* Info note */}
+        <div style={{fontSize:11,color:muted,lineHeight:1.7,padding:"10px 13px",
+          background:isDark?"#1A1A1A":"#FFFCF5",borderRadius:8,
+          border:isDark?"1px solid #2E2E2E":"1px solid #EDE0C8"}}>
+          Anyone with this link can open the trip and make contributions.
+          Re-share the link after any changes to keep everyone on the latest version.
+        </div>
+
+      </div>
+    </div>
+  );
+}
+
 // ─── MAIN APP ─────────────────────────────────────────────────────────────────
 export default function TripSplitter(){
-  const [tripName,setTripName]         = useState(DATASET_1_TRIP_NAME);
-  const [members,setMembers]           = useState(cloneData(DATASET_1_MEMBERS));
-  const [groups,setGroups]             = useState(cloneData(DATASET_1_GROUPS));
-  const [existingDebts,setExistingDebts] = useState(cloneData(DATASET_1_EXISTING_DEBTS));
-  const [currencies,setCurrencies]     = useState(cloneData(DEFAULT_CURRENCIES));
+  const _s = _sharedState;
+  const [tripName,setTripName]         = useState(_s?.tripName        ?? DATASET_1_TRIP_NAME);
+  const [members,setMembers]           = useState(cloneData(_s?.members        ?? DATASET_1_MEMBERS));
+  const [groups,setGroups]             = useState(cloneData(_s?.groups         ?? DATASET_1_GROUPS));
+  const [existingDebts,setExistingDebts] = useState(cloneData(_s?.existingDebts ?? DATASET_1_EXISTING_DEBTS));
+  const [currencies,setCurrencies]     = useState(cloneData(_s?.currencies     ?? DEFAULT_CURRENCIES));
   const [showAdd,setShowAdd]           = useState(false);
   const [editGroup,setEditGroup]       = useState(null);
   const [showSettings,setShowSettings] = useState(false);
   const [showExistingDebts,setShowExistingDebts] = useState(false);
   const [showCurrencies,setShowCurrencies] = useState(false);
+  const [showShare,setShowShare]       = useState(false);
   const [themeMode,setThemeMode]       = useState("light");
   const [showReset,setShowReset]       = useState(false);
-  const [history,setHistory]           = useState([{tripName:DATASET_1_TRIP_NAME,members:cloneData(DATASET_1_MEMBERS),groups:cloneData(DATASET_1_GROUPS),existingDebts:cloneData(DATASET_1_EXISTING_DEBTS),currencies:cloneData(DEFAULT_CURRENCIES)}]);
+  const _initSnap = {
+    tripName:      _s?.tripName        ?? DATASET_1_TRIP_NAME,
+    members:       cloneData(_s?.members        ?? DATASET_1_MEMBERS),
+    groups:        cloneData(_s?.groups         ?? DATASET_1_GROUPS),
+    existingDebts: cloneData(_s?.existingDebts  ?? DATASET_1_EXISTING_DEBTS),
+    currencies:    cloneData(_s?.currencies     ?? DEFAULT_CURRENCIES),
+  };
+  const [history,setHistory]           = useState([_initSnap]);
   const [historyIdx,setHistoryIdx]     = useState(0);
 
   const baseCurrency = currencies.find(c=>c.isBase) || currencies[0] || {code:"INR",symbol:"₹",rate:1,isBase:true};
@@ -1049,6 +1182,15 @@ export default function TripSplitter(){
             <span style={{width:34,height:18,borderRadius:999,background:isDark?"#4B3626":"#D6D0C6",position:"relative",display:"inline-block"}}>
               <span style={{position:"absolute",top:2,left:isDark?18:2,width:14,height:14,borderRadius:"50%",background:isDark?"#E1B07A":"#FFF",boxShadow:"0 1px 2px rgba(0,0,0,0.25)",transition:"left 0.2s ease"}}/>
             </span>
+          </button>
+          <button onClick={()=>setShowShare(true)} style={{display:"flex",alignItems:"center",gap:5,padding:"6px 12px",borderRadius:999,border:`1px solid ${theme.topChipBorder}`,background:theme.topChipBg,color:theme.topText,fontSize:11,fontWeight:600,cursor:"pointer"}}>
+            <svg width="12" height="12" viewBox="0 0 18 18" fill="none" aria-hidden="true">
+              <circle cx="14" cy="3.5" r="2" stroke="currentColor" strokeWidth="1.6"/>
+              <circle cx="14" cy="14.5" r="2" stroke="currentColor" strokeWidth="1.6"/>
+              <circle cx="4"  cy="9"   r="2" stroke="currentColor" strokeWidth="1.6"/>
+              <path d="M5.9 8.1l6.2-3.6M5.9 9.9l6.2 3.6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
+            </svg>
+            Share
           </button>
           <button onClick={handlePrint} style={{padding:"6px 12px",borderRadius:999,border:`1px solid ${theme.topChipBorder}`,background:theme.topChipBg,color:theme.topText,fontSize:11,fontWeight:600,cursor:"pointer"}}>
             Export PDF
@@ -1258,6 +1400,7 @@ export default function TripSplitter(){
       {showSettings&&<TripSettingsModal tripName={tripName} members={members} onSave={saveSettings} onClose={()=>setShowSettings(false)}/>}
       {showExistingDebts&&<ExistingDebtsModal members={members} debts={existingDebts} baseCurrencySymbol={baseCurrency.symbol} onSave={handleSaveDebts} onClose={()=>setShowExistingDebts(false)}/>}
       {showCurrencies&&<CurrencyModal currencies={currencies} groups={groups} onSave={handleSaveCurrencies} onClose={()=>setShowCurrencies(false)} isDark={isDark}/>}
+      {showShare&&<ShareModal tripName={tripName} members={members} groups={groups} existingDebts={existingDebts} currencies={currencies} onClose={()=>setShowShare(false)} isDark={isDark}/>}
       {showReset&&<ResetDataModal onClose={()=>setShowReset(false)} onConfirm={resetAllData}/>}
       <Analytics />
     </div>
