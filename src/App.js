@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Analytics } from '@vercel/analytics/react';
+import { saveTrip, subscribeState, pushActivity, subscribeActivity } from "./firebase";
 
 // ─── DATA ────────────────────────────────────────────────────────────────────
 const MEMBER_COLORS = ["#C17D3C","#3C7DC1","#7C3CC1","#3CC17D","#C13C6A","#3CC1B8","#C1A03C","#6A3CC1"];
@@ -86,6 +87,31 @@ const _sharedState = (() => {
     if (state) window.history.replaceState(null, '', window.location.pathname + window.location.search);
     return state;
   } catch(e) { return null; }
+})();
+
+// ─── REAL-TIME SHARING HELPERS ────────────────────────────────────────────────
+function generateTripId(name) {
+  const slug = (name||"trip").trim().toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"").slice(0,24)||"trip";
+  return `${slug}-${Date.now().toString(36).slice(-6)}`;
+}
+
+function timeAgo(ts) {
+  const d = Date.now()-ts;
+  if (d<60000)    return "just now";
+  if (d<3600000)  return `${Math.floor(d/60000)}m ago`;
+  if (d<86400000) return `${Math.floor(d/3600000)}h ago`;
+  return `${Math.floor(d/86400000)}d ago`;
+}
+
+function fmtDateTime(ts) {
+  return new Date(ts).toLocaleString("en-IN", {
+    day:"numeric", month:"short", hour:"2-digit", minute:"2-digit", hour12:true,
+  });
+}
+
+const _urlTripId = (() => {
+  try { return new URLSearchParams(window.location.search).get("trip")||null; }
+  catch(e) { return null; }
 })();
 
 function computeBalances(members, groups, existingDebts=[], currencies=[]) {
@@ -860,29 +886,34 @@ function CurrencyModal({currencies,groups,onSave,onClose,isDark=false}){
 }
 
 // ─── SHARE MODAL ─────────────────────────────────────────────────────────────
-function ShareModal({tripName,members,groups,existingDebts,currencies,onClose,isDark=false}){
-  const [copied,setCopied] = useState(false);
+function ShareModal({tripId,tripName,currentUser,onStartShare,onClose,isDark=false}){
+  const [nameInput,setNameInput] = useState(currentUser||"");
+  const [copied,setCopied]       = useState(false);
 
-  const url = (() => {
-    const encoded = encodeShareState({tripName,members,groups,existingDebts,currencies});
-    if (!encoded) return '';
-    return `${window.location.origin}${window.location.pathname}#state=${encoded}`;
-  })();
+  const isSharing = !!tripId;
+  const url = isSharing
+    ? `${window.location.origin}${window.location.pathname}?trip=${tripId}`
+    : null;
 
+  function startSharing(){
+    if (!nameInput.trim()) return;
+    onStartShare(nameInput.trim());
+  }
   function copy(){
+    if (!url) return;
     navigator.clipboard.writeText(url).then(()=>{
       setCopied(true);
       setTimeout(()=>setCopied(false), 2500);
     });
   }
 
-  const card  = isDark ? "#1F1F1F" : "#FFF";
-  const txt   = isDark ? "#EAEAEA" : "#1A1A1A";
-  const muted = isDark ? "#BEBEBE" : "#666";
-  const rowBg = isDark ? "#252525" : "#F9F6F1";
-  const rowBdr= isDark ? "1px solid #3A3A3A" : "1px solid #E8E4DE";
-  const inpBg = isDark ? "#141414" : "#F5F3F0";
-  const inpBdr= isDark ? "1px solid #3A3A3A" : "1px solid #DDD";
+  const card  = isDark?"#1F1F1F":"#FFF";
+  const txt   = isDark?"#EAEAEA":"#1A1A1A";
+  const muted = isDark?"#BEBEBE":"#666";
+  const rowBg = isDark?"#252525":"#F9F6F1";
+  const rowBdr= isDark?"1px solid #3A3A3A":"1px solid #E8E4DE";
+  const inpBg = isDark?"#141414":"#F5F3F0";
+  const inpBdr= isDark?"1px solid #3A3A3A":"1px solid #DDD";
 
   return(
     <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.45)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
@@ -897,55 +928,126 @@ function ShareModal({tripName,members,groups,existingDebts,currencies,onClose,is
               <circle cx="4"  cy="9"   r="2" stroke="currentColor" strokeWidth="1.4"/>
               <path d="M5.9 8.1l6.2-3.6M5.9 9.9l6.2 3.6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
             </svg>
-            <h3 style={{margin:0,fontSize:15,fontWeight:800,fontFamily:"'Nunito',sans-serif",color:txt}}>Share Trip</h3>
+            <h3 style={{margin:0,fontSize:15,fontWeight:800,fontFamily:"'Nunito',sans-serif",color:txt}}>
+              {isSharing?"Live Trip Link":"Share Trip"}
+            </h3>
+            {isSharing&&(
+              <span style={{fontSize:9,fontWeight:700,color:"#2A8C4A",background:"#E8F7ED",border:"1px solid #B8E0C0",borderRadius:999,padding:"2px 8px"}}>
+                ● LIVE
+              </span>
+            )}
           </div>
           <button onClick={onClose} style={{border:"none",background:"none",fontSize:18,cursor:"pointer",color:muted,lineHeight:1}}>✕</button>
         </div>
 
-        {/* Trip summary chip */}
-        <div style={{marginBottom:18,padding:"10px 14px",borderRadius:8,background:rowBg,border:rowBdr}}>
-          <div style={{fontSize:13,fontWeight:700,color:txt,marginBottom:3}}>✈️  {tripName}</div>
-          <div style={{fontSize:11,color:muted}}>
-            {members.length} people · {groups.length} expense group{groups.length!==1?"s":""} · {currencies.length} currenc{currencies.length===1?"y":"ies"}
-          </div>
-        </div>
-
-        {/* URL row */}
-        <div style={{marginBottom:16}}>
-          <div style={{fontSize:10,color:muted,fontWeight:700,textTransform:"uppercase",letterSpacing:0.5,marginBottom:7}}>Shareable link</div>
-          <div style={{display:"flex",gap:8,alignItems:"stretch"}}>
-            <input
-              readOnly value={url}
-              onClick={e=>e.target.select()}
-              style={{flex:1,padding:"9px 11px",borderRadius:8,border:inpBdr,background:inpBg,
-                fontSize:11,color:muted,fontFamily:"monospace",
-                overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",
-                minWidth:0,cursor:"text"}}
-            />
+        {!isSharing?(
+          /* ── Start sharing flow ── */
+          <>
+            <div style={{marginBottom:16,padding:"12px 14px",borderRadius:8,background:rowBg,border:rowBdr}}>
+              <div style={{fontSize:13,fontWeight:700,color:txt,marginBottom:3}}>✈️  {tripName}</div>
+              <div style={{fontSize:11,color:muted}}>Start syncing this trip so others can join and contribute in real time.</div>
+            </div>
+            <div style={{marginBottom:16}}>
+              <label style={{fontSize:10,color:muted,fontWeight:700,textTransform:"uppercase",letterSpacing:0.5,display:"block",marginBottom:7}}>
+                Your name (shown in activity log)
+              </label>
+              <input
+                value={nameInput}
+                onChange={e=>setNameInput(e.target.value)}
+                onKeyDown={e=>e.key==="Enter"&&startSharing()}
+                placeholder="e.g. Alex"
+                autoFocus
+                style={{width:"100%",padding:"9px 12px",borderRadius:8,border:inpBdr,background:inpBg,fontSize:14,fontWeight:600,color:txt,boxSizing:"border-box",fontFamily:"'Nunito',sans-serif"}}
+              />
+            </div>
             <button
-              onClick={copy}
-              style={{padding:"0 18px",borderRadius:8,border:"none",
-                background:copied?"#2A8C4A":"#2C2C2C",
-                color:"#FFF",fontSize:12,fontWeight:700,cursor:"pointer",
-                flexShrink:0,transition:"background 0.2s",
-                display:"flex",alignItems:"center",gap:6}}
+              onClick={startSharing}
+              disabled={!nameInput.trim()}
+              style={{width:"100%",padding:"10px",borderRadius:8,border:"none",background:nameInput.trim()?"#2C2C2C":"#AAA",color:"#FFF",fontSize:13,fontWeight:700,cursor:nameInput.trim()?"pointer":"not-allowed"}}
             >
-              {copied
-                ? <><svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true"><path d="M2 6l3 3 5-5" stroke="#FFF" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg>Copied</>
-                : <><svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true"><rect x="4" y="1" width="7" height="8" rx="1" stroke="#FFF" strokeWidth="1.3"/><path d="M8 4H2a1 1 0 00-1 1v6a1 1 0 001 1h6a1 1 0 001-1V9" stroke="#FFF" strokeWidth="1.3" strokeLinecap="round"/></svg>Copy</>
-              }
+              Start Syncing →
             </button>
+            <div style={{marginTop:12,fontSize:11,color:muted,lineHeight:1.6,textAlign:"center"}}>
+              A unique trip ID will be generated. Share the link with others to collaborate.
+            </div>
+          </>
+        ):(
+          /* ── Show shareable URL ── */
+          <>
+            <div style={{marginBottom:14,padding:"10px 14px",borderRadius:8,background:rowBg,border:rowBdr}}>
+              <div style={{fontSize:13,fontWeight:700,color:txt,marginBottom:3}}>✈️  {tripName}</div>
+              <div style={{fontSize:11,color:muted}}>Share this link — all changes sync in real time across participants.</div>
+            </div>
+            <div style={{marginBottom:16}}>
+              <div style={{fontSize:10,color:muted,fontWeight:700,textTransform:"uppercase",letterSpacing:0.5,marginBottom:7}}>Shareable link</div>
+              <div style={{display:"flex",gap:8,alignItems:"stretch"}}>
+                <input
+                  readOnly value={url}
+                  onClick={e=>e.target.select()}
+                  style={{flex:1,padding:"9px 11px",borderRadius:8,border:inpBdr,background:inpBg,fontSize:11,color:muted,fontFamily:"monospace",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",minWidth:0,cursor:"text"}}
+                />
+                <button
+                  onClick={copy}
+                  style={{padding:"0 18px",borderRadius:8,border:"none",background:copied?"#2A8C4A":"#2C2C2C",color:"#FFF",fontSize:12,fontWeight:700,cursor:"pointer",flexShrink:0,transition:"background 0.2s",display:"flex",alignItems:"center",gap:6}}
+                >
+                  {copied
+                    ? <><svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true"><path d="M2 6l3 3 5-5" stroke="#FFF" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg>Copied</>
+                    : <><svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true"><rect x="4" y="1" width="7" height="8" rx="1" stroke="#FFF" strokeWidth="1.3"/><path d="M8 4H2a1 1 0 00-1 1v6a1 1 0 001 1h6a1 1 0 001-1V9" stroke="#FFF" strokeWidth="1.3" strokeLinecap="round"/></svg>Copy</>
+                  }
+                </button>
+              </div>
+            </div>
+            <div style={{fontSize:11,color:muted,lineHeight:1.7,padding:"10px 13px",background:isDark?"#1A1A1A":"#FFFCF5",borderRadius:8,border:isDark?"1px solid #2E2E2E":"1px solid #EDE0C8"}}>
+              Anyone with this link joins the live trip. All edits sync automatically.
+            </div>
+          </>
+        )}
+
+      </div>
+    </div>
+  );
+}
+
+// ─── JOIN TRIP MODAL ──────────────────────────────────────────────────────────
+function JoinTripModal({tripName,onJoin,isDark=false}){
+  const [name,setName] = useState("");
+
+  const card  = isDark?"#1F1F1F":"#FFF";
+  const txt   = isDark?"#EAEAEA":"#1A1A1A";
+  const muted = isDark?"#BEBEBE":"#666";
+  const inpBg = isDark?"#141414":"#FFF";
+  const inpBdr= isDark?"1px solid #444":"1px solid #BBB";
+
+  return(
+    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.6)",zIndex:1200,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
+      <div style={{background:card,borderRadius:14,padding:28,width:400,boxShadow:"0 20px 60px rgba(0,0,0,0.25)"}}>
+        <div style={{textAlign:"center",marginBottom:20}}>
+          <div style={{fontSize:30,marginBottom:8}}>✈️</div>
+          <h3 style={{margin:0,fontSize:17,fontWeight:800,fontFamily:"'Nunito',sans-serif",color:txt}}>
+            {tripName&&tripName!=="Loading..."?tripName:"Shared Trip"}
+          </h3>
+          <div style={{fontSize:12,color:muted,marginTop:6,lineHeight:1.5}}>
+            You've been invited to a live trip.<br/>Enter your name to join.
           </div>
         </div>
-
-        {/* Info note */}
-        <div style={{fontSize:11,color:muted,lineHeight:1.7,padding:"10px 13px",
-          background:isDark?"#1A1A1A":"#FFFCF5",borderRadius:8,
-          border:isDark?"1px solid #2E2E2E":"1px solid #EDE0C8"}}>
-          Anyone with this link can open the trip and make contributions.
-          Re-share the link after any changes to keep everyone on the latest version.
+        <div style={{marginBottom:16}}>
+          <label style={{fontSize:10,color:muted,fontWeight:700,textTransform:"uppercase",letterSpacing:0.5,display:"block",marginBottom:7}}>Your name</label>
+          <input
+            value={name}
+            onChange={e=>setName(e.target.value)}
+            onKeyDown={e=>e.key==="Enter"&&name.trim()&&onJoin(name.trim())}
+            placeholder="e.g. Alex"
+            autoFocus
+            style={{width:"100%",padding:"10px 12px",borderRadius:8,border:inpBdr,background:inpBg,fontSize:14,fontWeight:600,color:txt,boxSizing:"border-box",fontFamily:"'Nunito',sans-serif"}}
+          />
         </div>
-
+        <button
+          onClick={()=>name.trim()&&onJoin(name.trim())}
+          disabled={!name.trim()}
+          style={{width:"100%",padding:"11px",borderRadius:8,border:"none",background:name.trim()?"#2C2C2C":"#AAA",color:"#FFF",fontSize:14,fontWeight:700,cursor:name.trim()?"pointer":"not-allowed",fontFamily:"'Nunito',sans-serif"}}
+        >
+          Join Trip
+        </button>
       </div>
     </div>
   );
@@ -953,12 +1055,13 @@ function ShareModal({tripName,members,groups,existingDebts,currencies,onClose,is
 
 // ─── MAIN APP ─────────────────────────────────────────────────────────────────
 export default function TripSplitter(){
+  const _hasUrlTrip = !!_urlTripId;
   const _s = _sharedState;
-  const [tripName,setTripName]         = useState(_s?.tripName        ?? DATASET_1_TRIP_NAME);
-  const [members,setMembers]           = useState(cloneData(_s?.members        ?? DATASET_1_MEMBERS));
-  const [groups,setGroups]             = useState(cloneData(_s?.groups         ?? DATASET_1_GROUPS));
-  const [existingDebts,setExistingDebts] = useState(cloneData(_s?.existingDebts ?? DATASET_1_EXISTING_DEBTS));
-  const [currencies,setCurrencies]     = useState(cloneData(_s?.currencies     ?? DEFAULT_CURRENCIES));
+  const [tripName,setTripName]         = useState(_hasUrlTrip?"Loading...":(_s?.tripName??DATASET_1_TRIP_NAME));
+  const [members,setMembers]           = useState(_hasUrlTrip?[]:cloneData(_s?.members??DATASET_1_MEMBERS));
+  const [groups,setGroups]             = useState(_hasUrlTrip?[]:cloneData(_s?.groups??DATASET_1_GROUPS));
+  const [existingDebts,setExistingDebts] = useState(_hasUrlTrip?[]:cloneData(_s?.existingDebts??DATASET_1_EXISTING_DEBTS));
+  const [currencies,setCurrencies]     = useState(cloneData(_hasUrlTrip?DEFAULT_CURRENCIES:(_s?.currencies??DEFAULT_CURRENCIES)));
   const [showAdd,setShowAdd]           = useState(false);
   const [editGroup,setEditGroup]       = useState(null);
   const [showSettings,setShowSettings] = useState(false);
@@ -967,13 +1070,21 @@ export default function TripSplitter(){
   const [showShare,setShowShare]       = useState(false);
   const [themeMode,setThemeMode]       = useState("light");
   const [showReset,setShowReset]       = useState(false);
-  const _initSnap = {
-    tripName:      _s?.tripName        ?? DATASET_1_TRIP_NAME,
-    members:       cloneData(_s?.members        ?? DATASET_1_MEMBERS),
-    groups:        cloneData(_s?.groups         ?? DATASET_1_GROUPS),
-    existingDebts: cloneData(_s?.existingDebts  ?? DATASET_1_EXISTING_DEBTS),
-    currencies:    cloneData(_s?.currencies     ?? DEFAULT_CURRENCIES),
-  };
+  const [tripId,setTripId]             = useState(_urlTripId||null);
+  const [currentUser,setCurrentUser]   = useState("");
+  const [activity,setActivity]         = useState([]);
+  const [showActivity,setShowActivity] = useState(false);
+  const [showJoin,setShowJoin]         = useState(!!_urlTripId);
+  const _ownWrite                      = useRef(false);
+  const _initSnap = _hasUrlTrip
+    ? {tripName:"Loading...",members:[],groups:[],existingDebts:[],currencies:cloneData(DEFAULT_CURRENCIES)}
+    : {
+        tripName:      _s?.tripName        ?? DATASET_1_TRIP_NAME,
+        members:       cloneData(_s?.members        ?? DATASET_1_MEMBERS),
+        groups:        cloneData(_s?.groups         ?? DATASET_1_GROUPS),
+        existingDebts: cloneData(_s?.existingDebts  ?? DATASET_1_EXISTING_DEBTS),
+        currencies:    cloneData(_s?.currencies     ?? DEFAULT_CURRENCIES),
+      };
   const [history,setHistory]           = useState([_initSnap]);
   const [historyIdx,setHistoryIdx]     = useState(0);
 
@@ -1029,17 +1140,64 @@ export default function TripSplitter(){
     setExistingDebts(snap.existingDebts); setCurrencies(snap.currencies||cloneData(DEFAULT_CURRENCIES));
   }
 
+  // ── Firebase real-time sync ─────────────────────────────────────────────────
+  useEffect(()=>{
+    if (!tripId) return;
+    const unsubState = subscribeState(tripId, (state)=>{
+      if (_ownWrite.current) { _ownWrite.current = false; return; }
+      if (state.tripName !== undefined)       setTripName(state.tripName);
+      if (Array.isArray(state.members))       setMembers(state.members);
+      if (Array.isArray(state.groups))        setGroups(state.groups);
+      if (Array.isArray(state.existingDebts)) setExistingDebts(state.existingDebts);
+      if (Array.isArray(state.currencies))    setCurrencies(state.currencies);
+    });
+    const unsubActivity = subscribeActivity(tripId, (items)=>{
+      setActivity(items);
+    });
+    return ()=>{ unsubState(); unsubActivity(); };
+  }, [tripId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  function syncToFirebase(state, user, action){
+    if (!tripId) return;
+    _ownWrite.current = true;
+    saveTrip(tripId, state);
+    if (action) pushActivity(tripId, {user: user||"Someone", action, ts:Date.now()});
+  }
+
+  function handleStartShare(userName){
+    setCurrentUser(userName);
+    const id = generateTripId(tripName);
+    setTripId(id);
+    const url = new URL(window.location.href);
+    url.searchParams.set("trip", id);
+    window.history.replaceState(null, "", url.toString());
+    const state = {tripName, members, groups, existingDebts, currencies};
+    _ownWrite.current = true;
+    saveTrip(id, state);
+    pushActivity(id, {user:userName, action:"started sharing the trip", ts:Date.now()});
+  }
+
   function updateGroup(u){
     const g2=groups.map(g=>g.id===u.id?u:g);
-    setGroups(g2); pushHistory({tripName,members,groups:g2,existingDebts,currencies});
+    setGroups(g2);
+    const snap={tripName,members,groups:g2,existingDebts,currencies};
+    pushHistory(snap);
+    syncToFirebase(snap,currentUser,`updated "${u.label}" · ${fmtBase(toBase(u.total,u.currency))}`);
   }
   function deleteGroup(id){
+    const deleted=groups.find(g=>g.id===id);
     const g2=groups.filter(g=>g.id!==id);
-    setGroups(g2); pushHistory({tripName,members,groups:g2,existingDebts,currencies});
+    setGroups(g2);
+    const snap={tripName,members,groups:g2,existingDebts,currencies};
+    pushHistory(snap);
+    syncToFirebase(snap,currentUser,`deleted "${deleted?.label||"a group"}"`);
   }
   function addGroup(g){
     const g2=[...groups,g];
-    setGroups(g2); pushHistory({tripName,members,groups:g2,existingDebts,currencies});
+    setGroups(g2);
+    const snap={tripName,members,groups:g2,existingDebts,currencies};
+    pushHistory(snap);
+    syncToFirebase(snap,currentUser,`added "${g.label}" · ${fmtBase(toBase(g.total,g.currency))}`);
   }
   function loadDataset1(){
     const snap={tripName:DATASET_1_TRIP_NAME,members:cloneData(DATASET_1_MEMBERS),groups:cloneData(DATASET_1_GROUPS),existingDebts:cloneData(DATASET_1_EXISTING_DEBTS),currencies:cloneData(DEFAULT_CURRENCIES)};
@@ -1059,16 +1217,22 @@ export default function TripSplitter(){
     const validIds=new Set(people.map(p=>p.id));
     const newDebts=existingDebts.filter(d=>validIds.has(d.from)&&validIds.has(d.to)&&d.from!==d.to&&d.amount>0);
     setExistingDebts(newDebts);
-    pushHistory({tripName:name,members:people,groups,existingDebts:newDebts,currencies});
+    const snap={tripName:name,members:people,groups,existingDebts:newDebts,currencies};
+    pushHistory(snap);
+    syncToFirebase(snap,currentUser,"updated trip settings");
     setShowSettings(false);
   }
   function handleSaveDebts(newDebts){
     setExistingDebts(newDebts);
-    pushHistory({tripName,members,groups,existingDebts:newDebts,currencies});
+    const snap={tripName,members,groups,existingDebts:newDebts,currencies};
+    pushHistory(snap);
+    syncToFirebase(snap,currentUser,`updated existing debts · ${newDebts.length} item${newDebts.length===1?"":"s"}`);
   }
   function handleSaveCurrencies(newCurrencies){
     setCurrencies(newCurrencies);
-    pushHistory({tripName,members,groups,existingDebts,currencies:newCurrencies});
+    const snap={tripName,members,groups,existingDebts,currencies:newCurrencies};
+    pushHistory(snap);
+    syncToFirebase(snap,currentUser,"updated currencies");
     setShowCurrencies(false);
   }
 
@@ -1217,7 +1381,41 @@ export default function TripSplitter(){
               </div>
               <div style={{fontSize:11,color:theme.muted,marginTop:1}}>{groups.length} groups · click to expand</div>
             </div>
-            <div style={{display:"flex",gap:8}}>
+            <div style={{display:"flex",gap:8,alignItems:"center"}}>
+              {tripId&&(
+                <div style={{position:"relative"}}>
+                  <button
+                    onClick={()=>setShowActivity(v=>!v)}
+                    title="Recent activity"
+                    style={{width:30,height:30,borderRadius:7,border:`1px solid ${theme.border}`,background:showActivity?(isDark?"#252525":"#F0F0F0"):theme.panelBg,color:theme.muted,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:0,position:"relative"}}
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                      <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.8"/>
+                      <path d="M12 7v5l3 3" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                    {activity.length>0&&<span style={{position:"absolute",top:3,right:3,width:6,height:6,borderRadius:"50%",background:"#3C7DC1",display:"block"}}/>}
+                  </button>
+                  {showActivity&&(
+                    <>
+                      <div style={{position:"fixed",inset:0,zIndex:499}} onClick={()=>setShowActivity(false)}/>
+                      <div style={{position:"absolute",top:"calc(100% + 6px)",right:0,background:isDark?"#1F1F1F":"#FFF",border:`1px solid ${theme.border}`,borderRadius:10,width:280,boxShadow:"0 8px 24px rgba(0,0,0,0.15)",zIndex:500,overflow:"hidden"}}>
+                        <div style={{padding:"10px 14px 8px",fontSize:10,fontWeight:700,color:theme.muted,textTransform:"uppercase",letterSpacing:0.5,borderBottom:`1px solid ${theme.border}`}}>Recent Activity</div>
+                        {activity.length===0?(
+                          <div style={{padding:"14px",fontSize:12,color:theme.muted,textAlign:"center"}}>No activity yet</div>
+                        ):activity.slice(0,5).map((a,i)=>(
+                          <div key={i} style={{padding:"9px 14px",borderBottom:i<Math.min(4,activity.length-1)?`1px solid ${theme.border}`:"none"}}>
+                            <div style={{fontSize:12,color:theme.text,lineHeight:1.45}}>
+                              <strong style={{color:theme.text}}>{a.user}</strong>
+                              <span style={{color:theme.muted}}> {a.action}</span>
+                            </div>
+                            <div style={{fontSize:10,color:theme.muted,marginTop:3}}>{fmtDateTime(a.ts)} · {timeAgo(a.ts)}</div>
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
               <button onClick={()=>setShowExistingDebts(true)} style={{padding:"5px 12px",borderRadius:7,border:`1px solid ${theme.border}`,background:theme.panelBg,color:theme.text,fontSize:12,fontWeight:600,cursor:"pointer"}}>
                 Existing Debts
               </button>
@@ -1257,8 +1455,9 @@ export default function TripSplitter(){
                 <div style={{fontSize:11,color:theme.muted,fontWeight:700}}>{existingDebts.length} item{existingDebts.length===1?"":"s"}</div>
               </div>
               {existingDebts.length===0?(
-                <div style={{fontSize:11,color:theme.muted,lineHeight:1.5}}>
-                  Add prior debts using the <strong>Existing Debts</strong> button above. These are included in final settlement.
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                  <div style={{fontSize:11,color:theme.muted,lineHeight:1.5}}>No prior debts added.</div>
+                  <button onClick={()=>setShowExistingDebts(true)} style={{fontSize:11,fontWeight:700,color:theme.muted,background:"none",border:`1px solid ${theme.border}`,borderRadius:6,padding:"3px 10px",cursor:"pointer",flexShrink:0}}>Edit Debts</button>
                 </div>
               ):(
                 <>
@@ -1268,8 +1467,9 @@ export default function TripSplitter(){
                       <span style={{fontWeight:700,color:theme.text}}>{fmtBase(d.amount)}</span>
                     </div>
                   ))}
-                  <div style={{fontSize:12,fontWeight:800,color:theme.text,marginTop:4}}>
-                    Total: {fmtBase(existingDebts.reduce((s,d)=>s+(d.amount||0),0))}
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:6}}>
+                    <div style={{fontSize:12,fontWeight:800,color:theme.text}}>Total: {fmtBase(existingDebts.reduce((s,d)=>s+(d.amount||0),0))}</div>
+                    <button onClick={()=>setShowExistingDebts(true)} style={{fontSize:11,fontWeight:700,color:theme.muted,background:"none",border:`1px solid ${theme.border}`,borderRadius:6,padding:"3px 10px",cursor:"pointer",flexShrink:0}}>Edit Debts</button>
                   </div>
                 </>
               )}
@@ -1400,7 +1600,8 @@ export default function TripSplitter(){
       {showSettings&&<TripSettingsModal tripName={tripName} members={members} onSave={saveSettings} onClose={()=>setShowSettings(false)}/>}
       {showExistingDebts&&<ExistingDebtsModal members={members} debts={existingDebts} baseCurrencySymbol={baseCurrency.symbol} onSave={handleSaveDebts} onClose={()=>setShowExistingDebts(false)}/>}
       {showCurrencies&&<CurrencyModal currencies={currencies} groups={groups} onSave={handleSaveCurrencies} onClose={()=>setShowCurrencies(false)} isDark={isDark}/>}
-      {showShare&&<ShareModal tripName={tripName} members={members} groups={groups} existingDebts={existingDebts} currencies={currencies} onClose={()=>setShowShare(false)} isDark={isDark}/>}
+      {showShare&&<ShareModal tripId={tripId} tripName={tripName} currentUser={currentUser} onStartShare={handleStartShare} onClose={()=>setShowShare(false)} isDark={isDark}/>}
+      {showJoin&&<JoinTripModal tripName={tripName} onJoin={(name)=>{setCurrentUser(name);setShowJoin(false);pushActivity(tripId,{user:name,action:"joined the trip",ts:Date.now()});}} isDark={isDark}/>}
       {showReset&&<ResetDataModal onClose={()=>setShowReset(false)} onConfirm={resetAllData}/>}
       <Analytics />
     </div>
